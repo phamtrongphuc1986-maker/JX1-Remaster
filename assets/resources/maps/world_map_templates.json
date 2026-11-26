@@ -1,0 +1,636 @@
+{
+  "schema_version": 1,
+  "note": "21 templates only; require terrain, collision, NPC, monster and portal authoring before production.",
+  "maps": [
+    {
+      "map_id": "map_city_01",
+      "name": "Tương Dương",
+      "location_id": "city_01",
+      "location_type": "city",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_city_02",
+      "name": "Thành Đô",
+      "location_id": "city_02",
+      "location_type": "city",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_city_03",
+      "name": "Biện Kinh",
+      "location_id": "city_03",
+      "location_type": "city",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_city_04",
+      "name": "Lâm An",
+      "location_id": "city_04",
+      "location_type": "city",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_city_05",
+      "name": "Đại Lý",
+      "location_id": "city_05",
+      "location_type": "city",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_city_06",
+      "name": "Dương Châu",
+      "location_id": "city_06",
+      "location_type": "city",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_city_07",
+      "name": "Phượng Tường",
+      "location_id": "city_07",
+      "location_type": "city",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_01",
+      "name": "Ba Lăng Huyện",
+      "location_id": "locality_01",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_02",
+      "name": "Nam Nhạc Trấn",
+      "location_id": "locality_02",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_03",
+      "name": "Long Môn Trấn",
+      "location_id": "locality_03",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_04",
+      "name": "Vĩnh Lạc Trấn",
+      "location_id": "locality_04",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_05",
+      "name": "Giang Tân Thôn",
+      "location_id": "locality_05",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_06",
+      "name": "Chu Tiên Trấn",
+      "location_id": "locality_06",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_07",
+      "name": "Long Tuyền Thôn",
+      "location_id": "locality_07",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_08",
+      "name": "Thạch Cổ Trấn",
+      "location_id": "locality_08",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_09",
+      "name": "Đạo Hương Thôn",
+      "location_id": "locality_09",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_10",
+      "name": "Tiên Đôi Nội",
+      "location_id": "locality_10",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_11",
+      "name": "Đoàn Lập",
+      "location_id": "locality_11",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_12",
+      "name": "Tân Minh",
+      "location_id": "locality_12",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_13",
+      "name": "Tiên Lãng",
+      "location_id": "locality_13",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    },
+    {
+      "map_id": "map_locality_14",
+      "name": "Hải Phòng",
+      "location_id": "locality_14",
+      "location_type": "locality",
+      "projection": "isometric",
+      "tile_width": 64,
+      "tile_height": 32,
+      "width": 20,
+      "height": 20,
+      "layers": [
+        "ground",
+        "decoration_back",
+        "entities",
+        "occlusion_front"
+      ],
+      "spawn_points": [
+        {
+          "id": "player_start",
+          "type": "player",
+          "x": 9,
+          "y": 12
+        }
+      ],
+      "npcs": [],
+      "monster_spawns": [],
+      "portals": [],
+      "blocked_cells": [],
+      "status": "template_pending_art_and_encounters"
+    }
+  ]
+}
