@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "note": "Danh mục địa điểm theo yêu cầu dự án. Đây là dữ liệu định danh và điểm vào bản đồ mẫu; chưa phải bản đồ đồ họa hoàn chỉnh hay dữ liệu tọa độ NPC cuối cùng.",
+  "cities": [
+    {
+      "id": "city_01",
+      "name": "Tương Dương",
+      "type": "city",
+      "map_id": "map_city_01",
+      "region": "Trung Nguyên",
+      "gate_count": 4,
+      "travel_fee_luong": 10000
+    },
+    {
+      "id": "city_02",
+      "name": "Thành Đô",
+      "type": "city",
+      "map_id": "map_city_02",
+      "region": "Trung Nguyên",
+      "gate_count": 4,
+      "travel_fee_luong": 10000
+    },
+    {
+      "id": "city_03",
+      "name": "Biện Kinh",
+      "type": "city",
+      "map_id": "map_city_03",
+      "region": "Trung Nguyên",
+      "gate_count": 4,
+      "travel_fee_luong": 10000
+    },
+    {
+      "id": "city_04",
+      "name": "Lâm An",
+      "type": "city",
+      "map_id": "map_city_04",
+      "region": "Trung Nguyên",
+      "gate_count": 4,
+      "travel_fee_luong": 10000
+    },
+    {
+      "id": "city_05",
+      "name": "Đại Lý",
+      "type": "city",
+      "map_id": "map_city_05",
+      "region": "Trung Nguyên",
+      "gate_count": 4,
+      "travel_fee_luong": 10000
+    },
+    {
+      "id": "city_06",
+      "name": "Dương Châu",
+      "type": "city",
+      "map_id": "map_city_06",
+      "region": "Trung Nguyên",
+      "gate_count": 4,
+      "travel_fee_luong": 10000
+    },
+    {
+      "id": "city_07",
+      "name": "Phượng Tường",
+      "type": "city",
+      "map_id": "map_city_07",
+      "region": "Trung Nguyên",
+      "gate_count": 4,
+      "travel_fee_luong": 10000
+    }
+  ],
+  "localities": [
+    {
+      "id": "locality_01",
+      "name": "Ba Lăng Huyện",
+      "type": "locality",
+      "map_id": "map_locality_01",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_02",
+      "name": "Nam Nhạc Trấn",
+      "type": "locality",
+      "map_id": "map_locality_02",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_03",
+      "name": "Long Môn Trấn",
+      "type": "locality",
+      "map_id": "map_locality_03",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_04",
+      "name": "Vĩnh Lạc Trấn",
+      "type": "locality",
+      "map_id": "map_locality_04",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_05",
+      "name": "Giang Tân Thôn",
+      "type": "locality",
+      "map_id": "map_locality_05",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_06",
+      "name": "Chu Tiên Trấn",
+      "type": "locality",
+      "map_id": "map_locality_06",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_07",
+      "name": "Long Tuyền Thôn",
+      "type": "locality",
+      "map_id": "map_locality_07",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_08",
+      "name": "Thạch Cổ Trấn",
+      "type": "locality",
+      "map_id": "map_locality_08",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_09",
+      "name": "Đạo Hương Thôn",
+      "type": "locality",
+      "map_id": "map_locality_09",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_10",
+      "name": "Tiên Đôi Nội",
+      "type": "locality",
+      "map_id": "map_locality_10",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_11",
+      "name": "Đoàn Lập",
+      "type": "locality",
+      "map_id": "map_locality_11",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_12",
+      "name": "Tân Minh",
+      "type": "locality",
+      "map_id": "map_locality_12",
+      "region": "Trung Nguyên",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_13",
+      "name": "Tiên Lãng",
+      "type": "locality",
+      "map_id": "map_locality_13",
+      "region": "Hải Phòng",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    },
+    {
+      "id": "locality_14",
+      "name": "Hải Phòng",
+      "type": "locality",
+      "map_id": "map_locality_14",
+      "region": "Hải Phòng",
+      "default_xa_phu_count": 2,
+      "travel_fee_luong": 5000
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+name: Server prototype CI
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'assets/resources/maps/world_map_layouts_v1.json'
+      - '.github/workflows/server-ci.yml'
+  push:
+    branches: [codex/project-completion]
+    paths:
+      - 'server/**'
+      - 'assets/resources/maps/world_map_layouts_v1.json'
+      - '.github/workflows/server-ci.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install server dependencies
+        working-directory: server
+        run: npm install
+      - name: Syntax check
+        working-directory: server
+        run: npm run check
+      - name: Unit and persistence tests
+        working-directory: server
+        run: npm test

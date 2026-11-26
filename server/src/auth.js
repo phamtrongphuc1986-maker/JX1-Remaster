@@ -1,0 +1,8 @@
+'use strict';
+const crypto=require('node:crypto'),{promisify}=require('node:util'),scrypt=promisify(crypto.scrypt),KEYLEN=64,TOKEN_TTL_MS=12*60*60*1000;
+function normalizeUsername(v){return typeof v==='string'&&/^[a-zA-Z0-9_]{3,20}$/.test(v)?v:null;}
+async function createPassword(password){if(typeof password!=='string'||password.length<10||password.length>128)throw Error('PASSWORD_POLICY');const salt=crypto.randomBytes(16).toString('hex');const hash=(await scrypt(password,salt,KEYLEN)).toString('hex');return{salt,hash};}
+async function verifyPassword(password,salt,expected){if(typeof password!=='string')return false;const actual=Buffer.from((await scrypt(password,salt,KEYLEN)).toString('hex'),'hex'),wanted=Buffer.from(expected,'hex');return actual.length===wanted.length&&crypto.timingSafeEqual(actual,wanted);}
+function issueToken(accountId,secret){const tokenId=crypto.randomUUID(),expiresAt=Date.now()+TOKEN_TTL_MS,payload=Buffer.from(JSON.stringify({sub:accountId,jti:tokenId,exp:expiresAt})).toString('base64url'),sig=crypto.createHmac('sha256',secret).update(payload).digest('base64url');return{token:payload+'.'+sig,tokenId,expiresAt};}
+function readToken(token,secret){if(typeof token!=='string')return null;const [payload,sig,...extra]=token.split('.');if(!payload||!sig||extra.length)return null;const expected=crypto.createHmac('sha256',secret).update(payload).digest(),actual=Buffer.from(sig,'base64url');if(actual.length!==expected.length||!crypto.timingSafeEqual(actual,expected))return null;try{const d=JSON.parse(Buffer.from(payload,'base64url').toString());return d.exp>Date.now()&&typeof d.sub==='string'&&typeof d.jti==='string'?d:null;}catch{return null;}}
+module.exports={normalizeUsername,createPassword,verifyPassword,issueToken,readToken};

@@ -1,0 +1,10 @@
+# Cocos Creator generated files
+/temp/
+/library/
+/local/
+/build/
+/release/
+/profiles/
+/.vscode/
+.DS_Store
+Thumbs.db

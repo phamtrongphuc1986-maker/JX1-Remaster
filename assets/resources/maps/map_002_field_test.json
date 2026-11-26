@@ -1,0 +1,49 @@
+{
+  "map_id": "map_002_field_test",
+  "name": "Bai Co Ngoai Thon",
+  "projection": "isometric",
+  "tile_width": 64,
+  "tile_height": 32,
+  "width": 20,
+  "height": 20,
+  "layers": [
+    "ground",
+    "decoration_back",
+    "entities",
+    "occlusion_front"
+  ],
+  "spawn_points": [
+    {
+      "id": "field_entry",
+      "type": "player",
+      "x": 2,
+      "y": 10
+    }
+  ],
+  "npcs": [],
+  "monster_spawns": [
+    {
+      "id": "field_monsters_001",
+      "monster_id": "monster_slime_001",
+      "x": 12,
+      "y": 12,
+      "count": 5
+    }
+  ],
+  "portals": [
+    {
+      "id": "portal_back_to_village",
+      "x": 1,
+      "y": 10,
+      "target_map_id": "map_001_village_test",
+      "target_x": 18,
+      "target_y": 10
+    }
+  ],
+  "blocked_cells": [
+    [5, 5], [5, 6],
+    [6, 5], [6, 6],
+    [14, 14], [15, 14]
+  ],
+  "notes": "Ban do bai co thu nghiem, tai nguyen tu tao."
+}

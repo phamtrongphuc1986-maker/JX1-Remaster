@@ -1,0 +1,33 @@
+name: Android APK (self-hosted Cocos Creator)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    # Runner must be configured by the owner with these labels and toolchain.
+    runs-on: [self-hosted, linux, x64, cocos-creator, android]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check toolchain and project readiness
+        shell: bash
+        run: |
+          test -n "${COCOS_CREATOR_CLI:-}"
+          test -x "$COCOS_CREATOR_CLI"
+          test -n "${ANDROID_SDK_ROOT:-}"
+          test -d "$ANDROID_SDK_ROOT"
+          java -version
+          test -f assets/scenes/Main.scene
+      - name: Build APK
+        shell: bash
+        run: bash tools/build-android-apk.sh
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JX1-Remaster-Android-APK
+          path: release/apk/JX1-Remaster-android.apk
+          if-no-files-found: error
+          retention-days: 14
