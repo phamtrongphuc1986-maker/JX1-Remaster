@@ -22,8 +22,8 @@ export interface InventoryAddResult {
 }
 
 export class InventorySystem {
-    readonly columns = 10;
-    readonly rows = 6;
+    readonly columns = 6;
+    readonly rows = 10;
     readonly capacity = 60;
 
     private cells: Array<string | null> = [];
