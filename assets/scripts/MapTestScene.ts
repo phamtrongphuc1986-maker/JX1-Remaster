@@ -1663,7 +1663,7 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
         titleNode.addComponent(UITransform).setContentSize(280, 24);
 
         const title = titleNode.addComponent(Label);
-        title.string = 'TUI DO - 60 O';
+        title.string = 'TUI DO - 6 COT x 10 HANG';
         title.fontSize = 16;
         title.lineHeight = 20;
         title.color = new Color(255, 220, 145, 255);
@@ -1671,11 +1671,12 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
         this.inventoryCellNodes = [];
 
         const cellSize = 25;
-        const startX = -125;
-        const startY = 92;
+        const startX = -62;
+        const startY = 112;
 
-        for (let y = 0; y < 6; y++) {
-            for (let x = 0; x < 10; x++) {
+        // Lưới túi đồ dọc: 6 cột x 10 hàng.
+        for (let y = 0; y < 10; y++) {
+            for (let x = 0; x < 6; x++) {
                 const cellX = x;
                 const cellY = y;
 
