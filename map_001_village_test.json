@@ -1,0 +1,56 @@
+{
+  "map_id": "map_001_village_test",
+  "name": "Thon Khoi Dau",
+  "projection": "isometric",
+  "tile_width": 64,
+  "tile_height": 32,
+  "width": 20,
+  "height": 20,
+  "layers": [
+    "ground",
+    "decoration_back",
+    "entities",
+    "occlusion_front"
+  ],
+  "spawn_points": [
+    {
+      "id": "player_start",
+      "type": "player",
+      "x": 9,
+      "y": 12
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc_village_001",
+      "name": "Thon Truong",
+      "x": 11,
+      "y": 9
+    }
+  ],
+  "monster_spawns": [
+    {
+      "id": "spawn_slime_001",
+      "monster_id": "monster_slime_001",
+      "x": 15,
+      "y": 14,
+      "count": 3
+    }
+  ],
+  "portals": [
+    {
+      "id": "portal_to_field",
+      "x": 18,
+      "y": 10,
+      "target_map_id": "map_002_field_test",
+      "target_x": 2,
+      "target_y": 10
+    }
+  ],
+  "blocked_cells": [
+    [6, 6], [6, 7], [7, 6], [7, 7],
+    [3, 13], [4, 13],
+    [15, 5], [16, 5]
+  ],
+  "notes": "Map test. Graphics and assets will be created independently."
+}

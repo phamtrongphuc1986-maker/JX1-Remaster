@@ -1,0 +1,24 @@
+JX1 REMASTER - BAN VA C4.14.5 (26-11-2026)
+
+Da them:
+1. scripts/TeleportationSystem.ts
+   - Danh sach 21 diem den: 7 thanh va 14 dia danh theo pham vi da chot.
+   - Luu map ID va toa do X/Y de Tho Dia Phu tro ve dung vi tri.
+   - Nap map dich tu resources/maps, kiem tra JSON, spawn va o di duoc.
+2. scripts/MapTestScene.ts
+   - Them nut SU DUNG BUA trong bang tui do.
+   - Chon Than Hanh Phu: chuyen qua danh sach 21 dia danh.
+   - Tho Dia Phu: hien diem tro ve da luu.
+   - Cho 1 giay truoc khi nap/dich chuyen.
+   - Chi tru bua sau khi nap map va toa do dich hop le; that bai khong mat bua.
+   - Luu toa do khi roi map bang cong portal.
+   - Khoa thao tac trong luc dang dich chuyen bang co transition hien co.
+
+Gioi han cua goi ma nguon hien tai:
+- Chua co 21 file map dich trong assets/resources/maps. Cac map ID da dat ten theo dang map_<ma_dia_danh>.
+- Do do, danh sach chon da co day du nhung dich chuyen den cac map chua co file se bao loi va giu nguyen bua.
+- Chua co he thong NPC shop/ky tran cac trong bo ma nay, nen chua the mua hai loai bua tu NPC. Nut su dung se hoat dong khi item duoc them vao tui bang he thong vat pham.
+- Chua co project Cocos Creator hoan chinh (package.json, tsconfig, scene/project settings) trong ZIP; khong the build APK hoac chay type-check day du tai moi truong nay.
+
+Khong thay doi he thong chien dau, ky nang, AI quai, EXP hay du lieu map thu nghiem.
+Khong tu them map gia, khong tao toa do spawn gia cho 21 dia danh.
