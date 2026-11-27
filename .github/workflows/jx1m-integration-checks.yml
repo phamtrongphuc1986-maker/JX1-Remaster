@@ -1,0 +1,35 @@
+name: JX1M integration checks
+
+on:
+  push:
+    branches: [integration/jx1m-clean-monorepo]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  source-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check expected project layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f docs/INTEGRATION_AUDIT_VI.md
+          echo "Repository documentation checks passed."
+      - name: Go server tests (when source is integrated)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f server/go.mod ]; then
+            cd server
+            go test ./...
+          elif [ -f go.mod ]; then
+            go test ./...
+          else
+            echo "::notice::Go source has not yet been integrated; server tests skipped."
+          fi
