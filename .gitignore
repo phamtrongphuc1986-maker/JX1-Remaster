@@ -1,0 +1,32 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Go outputs
+/server/jx1m-server*
+/server/*.test
+/server/coverage.out
+
+# Runtime and local data
+**/data/*.db
+**/data/*.db-wal
+**/data/*.db-shm
+**/*.log
+
+# Secrets and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+
+# Cocos generated/cache/build outputs
+/client/cocos/temp/
+/client/cocos/library/
+/client/cocos/build/
+/client/cocos/local/
