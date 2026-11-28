@@ -50,4 +50,4 @@ go build ./...
 
 Chỉ chạy `server/scripts/smoke-test.sh` với server/database thử nghiệm, không dùng database production.
 
-Xem [hướng dẫn project Cocos, scene và API](docs/COCOS_PROJECT_SETUP_VI.md), [báo cáo kiểm kê/tích hợp](docs/INTEGRATION_AUDIT_VI.md) và [phân tích phần client còn thiếu](docs/CLIENT_GAP_ANALYSIS_VI.md). Xem thêm [điều kiện và giới hạn build Android hiện tại](docs/ANDROID_BUILD_LIMITATIONS_VI.md). Xem thêm [rà soát an toàn API server](docs/SECURITY_REVIEW_VI.md).
+Xem [hướng dẫn project Cocos, scene và API](docs/COCOS_PROJECT_SETUP_VI.md), [chuẩn bị HTTPS server](server/HTTPS_DEPLOYMENT_VI.md), [báo cáo kiểm kê/tích hợp](docs/INTEGRATION_AUDIT_VI.md) và [phân tích phần client còn thiếu](docs/CLIENT_GAP_ANALYSIS_VI.md). Xem thêm [điều kiện và giới hạn build Android hiện tại](docs/ANDROID_BUILD_LIMITATIONS_VI.md). Xem thêm [rà soát an toàn API server](docs/SECURITY_REVIEW_VI.md).
