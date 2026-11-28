@@ -248,7 +248,7 @@ func attackMonsterHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var req attackMonsterRequest
-		if json.NewDecoder(r.Body).Decode(&req) != nil ||
+		if !decode(w, r, &req) ||
 			req.CharacterID < 1 || req.MonsterID < 1 {
 			http.Error(w, "Dữ liệu không hợp lệ", 400)
 			return
@@ -477,7 +477,7 @@ func reviveCharacterHandler(db *sql.DB) http.HandlerFunc {
 			CharacterID int `json:"character_id"`
 		}
 
-		if json.NewDecoder(r.Body).Decode(&req) != nil ||
+		if !decode(w, r, &req) ||
 			req.CharacterID < 1 {
 			http.Error(w, "Dữ liệu không hợp lệ", 400)
 			return
