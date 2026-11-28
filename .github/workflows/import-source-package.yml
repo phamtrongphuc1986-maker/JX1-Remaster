@@ -25,7 +25,6 @@ jobs:
         run: |
           set -euo pipefail
           expected="3caffb850f4a1b72b71bc6e757738781f6176f45d9b0df0e8e070ecf46f63184"
-          echo "3caffb850f4a1b72b71bc6e757738781f6176f45d9b0df0e8e070ecf46f63184  /tmp/jx1-remaster-source.tar.gz" | sha256sum -c -
           base64 -d artifacts/jx1-remaster-source.tar.gz.b64 > /tmp/jx1-remaster-source.tar.gz
           echo "$expected  /tmp/jx1-remaster-source.tar.gz" | sha256sum -c -
           python3 - <<'PY'
