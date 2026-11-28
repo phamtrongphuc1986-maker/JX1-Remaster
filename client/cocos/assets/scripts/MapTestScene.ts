@@ -395,10 +395,10 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
                     return;
                 }
 
-                this.mapData = data;
                 if (this.onlineMode) {
                     return;
                 }
+                this.mapData = data;
 
                 const spawn = data.spawn_points.find(
                     item => item.type === 'player'
