@@ -118,7 +118,7 @@ export class GameApi {
     }
 
     listSkills(classId: number): Promise<ApiResult<unknown[]>> {
-        return this.request('/api/skills?class_id=' + encodeURIComponent(String(classId)), 'GET', false as unknown as undefined, false);
+        return this.request('/api/skills?class_id=' + encodeURIComponent(String(classId)), 'GET', undefined, false);
     }
 
     listCharacterSkills(characterId: number): Promise<ApiResult<unknown[]>> {
