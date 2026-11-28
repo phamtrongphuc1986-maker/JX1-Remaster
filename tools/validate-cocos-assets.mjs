@@ -47,6 +47,29 @@ for (const file of tsFiles) {
   }
 }
 
+const authFlowPath = path.join(scriptsDir, 'AuthFlowController.ts');
+const entryPath = path.join(scriptsDir, 'JX1GameEntry.ts');
+if (!fs.existsSync(authFlowPath)) {
+  fail('AuthFlowController.ts is missing');
+} else {
+  const authFlow = fs.readFileSync(authFlowPath, 'utf8');
+  for (const required of [
+    'api.login(', 'api.register(', 'api.listClasses(', 'api.listCharacters(',
+    'api.createCharacter(', 'renderLogin(', 'renderClasses(',
+    'renderCreateCharacter(', 'renderCharacters(', 'enterGame('
+  ]) {
+    if (!authFlow.includes(required)) fail('AuthFlowController.ts missing flow/API call: ' + required);
+  }
+}
+if (!fs.existsSync(entryPath)) {
+  fail('JX1GameEntry.ts is missing');
+} else {
+  const entry = fs.readFileSync(entryPath, 'utf8');
+  if (!entry.includes('AuthFlowController') || !entry.includes('accountFlow.apiBaseUrl = this.apiBaseUrl')) {
+    fail('JX1GameEntry.ts does not attach AuthFlowController or pass the staging API URL');
+  }
+}
+
 const mapDir = path.join(assetsDir, 'resources', 'maps');
 const mapFiles = walk(mapDir).filter(file => file.endsWith('.json'));
 if (mapFiles.length < 2) fail('expected at least two JSON maps in assets/resources/maps');
