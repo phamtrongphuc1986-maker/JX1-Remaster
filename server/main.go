@@ -601,7 +601,8 @@ func main() {
 
 	defer db.Close()
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		respond(w, 200, map[string]string{
 			"game":    "JX1M Clean",
 			"version": "0.4.0",
@@ -609,27 +610,37 @@ func main() {
 		})
 	})
 
-	http.HandleFunc("/api/register", register)
-	http.HandleFunc("/api/login", login)
-	http.HandleFunc("/api/classes", classList)
+	mux.HandleFunc("/api/register", register)
+	mux.HandleFunc("/api/login", login)
+	mux.HandleFunc("/api/classes", classList)
 
-	http.HandleFunc("/api/characters", listCharacters)
-	http.HandleFunc("/api/characters/create", createCharacter)
-	http.HandleFunc("/api/characters/stats", getCharacterStats)
-	http.HandleFunc("/api/characters/allocate", allocateStat)
-	http.HandleFunc("/api/characters/reset-stats", resetCharacterStats)
+	mux.HandleFunc("/api/characters", listCharacters)
+	mux.HandleFunc("/api/characters/create", createCharacter)
+	mux.HandleFunc("/api/characters/stats", getCharacterStats)
+	mux.HandleFunc("/api/characters/allocate", allocateStat)
+	mux.HandleFunc("/api/characters/reset-stats", resetCharacterStats)
 
 	// He thong ky nang 10 mon phai
-	http.HandleFunc("/api/skills", listSkillsHandler(db))
-	http.HandleFunc("/api/characters/skills", characterSkillsHandler(db))
-	http.HandleFunc("/api/skills/learn", learnSkillHandler(db))
-	http.HandleFunc("/api/skills/upgrade", upgradeSkillHandler(db))
-	http.HandleFunc("/api/monsters", listMonstersHandler(db))
-	http.HandleFunc("/api/combat/attack", attackMonsterHandler(db))
-	http.HandleFunc("/api/characters/revive", reviveCharacterHandler(db))
-	http.HandleFunc("/api/inventory", inventoryHandler(db))
-	http.HandleFunc("/api/items/use", useItemHandler(db))
+	mux.HandleFunc("/api/skills", listSkillsHandler(db))
+	mux.HandleFunc("/api/characters/skills", characterSkillsHandler(db))
+	mux.HandleFunc("/api/skills/learn", learnSkillHandler(db))
+	mux.HandleFunc("/api/skills/upgrade", upgradeSkillHandler(db))
+	mux.HandleFunc("/api/monsters", listMonstersHandler(db))
+	mux.HandleFunc("/api/combat/attack", attackMonsterHandler(db))
+	mux.HandleFunc("/api/characters/revive", reviveCharacterHandler(db))
+	mux.HandleFunc("/api/inventory", inventoryHandler(db))
+	mux.HandleFunc("/api/items/use", useItemHandler(db))
+
+	server := &http.Server{
+		Addr:              "127.0.0.1:8083",
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
 
 	log.Println("JX1M Clean 0.4.0 starting at 127.0.0.1:8083")
-	log.Fatal(http.ListenAndServe("127.0.0.1:8083", nil))
+	log.Fatal(server.ListenAndServe())
 }
