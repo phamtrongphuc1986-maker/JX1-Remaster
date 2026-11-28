@@ -2,7 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -219,4 +224,74 @@ func TestWorldPortalDefinitionsAreWalkableAndConnected(t *testing.T) {
 		!worldWalkable(field.TargetMap,field.TargetX,field.TargetY) {
 		t.Fatal("portal destinations must be walkable")
 	}
+}
+
+func newWorldMoveTestDB(t *testing.T, mapID string, x, y, hp int) *sql.DB {
+	t.Helper()
+	testDB, err := sql.Open("sqlite", ":memory:")
+	if err != nil { t.Fatal(err) }
+	testDB.SetMaxOpenConns(1)
+	_, err = testDB.Exec(`
+		CREATE TABLE sessions(token TEXT PRIMARY KEY,user_id INTEGER NOT NULL,expires_at DATETIME NOT NULL);
+		CREATE TABLE characters(
+			id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,map_id TEXT NOT NULL,
+			pos_x INTEGER NOT NULL,pos_y INTEGER NOT NULL,last_move_at INTEGER NOT NULL DEFAULT 0
+		);
+		CREATE TABLE character_stats(character_id INTEGER PRIMARY KEY,current_hp INTEGER NOT NULL);
+		CREATE TABLE world_presence(character_id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,last_seen_at INTEGER NOT NULL);
+	`)
+	if err != nil { t.Fatal(err) }
+	_, err = testDB.Exec("INSERT INTO sessions(token,user_id,expires_at) VALUES('test-token',10,?)",time.Now().Add(time.Hour))
+	if err != nil { t.Fatal(err) }
+	_, err = testDB.Exec("INSERT INTO characters(id,user_id,map_id,pos_x,pos_y,last_move_at) VALUES(1,10,?,?,?,0)",mapID,x,y)
+	if err != nil { t.Fatal(err) }
+	_, err = testDB.Exec("INSERT INTO character_stats(character_id,current_hp) VALUES(1,?)",hp)
+	if err != nil { t.Fatal(err) }
+	return testDB
+}
+
+func callWorldMove(t *testing.T, handler http.HandlerFunc, dx, dy int) (*httptest.ResponseRecorder, map[string]any) {
+	t.Helper()
+	body := `{"character_id":1,"dx":` + strconv.Itoa(dx) + `,"dy":` + strconv.Itoa(dy) + `}`
+	req := httptest.NewRequest(http.MethodPost,"/api/world/move",strings.NewReader(body))
+	req.Header.Set("Authorization","Bearer test-token")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec,req)
+	var payload map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(),&payload)
+	return rec,payload
+}
+
+func TestWorldMoveHandlerPersistsPositionAndServerPortal(t *testing.T) {
+	testDB := newWorldMoveTestDB(t,"map_001_village_test",9,12,100)
+	defer testDB.Close()
+	oldDB := db
+	db = testDB
+	defer func(){ db = oldDB }()
+
+	handler := worldMoveHandler(testDB)
+	rec,payload := callWorldMove(t,handler,1,0)
+	if rec.Code != http.StatusOK || payload["x"] != float64(10) || payload["y"] != float64(12) {
+		t.Fatalf("expected authoritative move to 10,12; status=%d payload=%#v",rec.Code,payload)
+	}
+	_,err := testDB.Exec("UPDATE characters SET pos_x=17,pos_y=10,last_move_at=0 WHERE id=1")
+	if err != nil { t.Fatal(err) }
+	rec,payload = callWorldMove(t,handler,1,0)
+	if rec.Code != http.StatusOK || payload["map_id"] != "map_002_field_test" ||
+		payload["x"] != float64(2) || payload["y"] != float64(10) {
+		t.Fatalf("expected server portal transition to map 2 at 2,10; status=%d payload=%#v",rec.Code,payload)
+	}
+	var mapID string; var x,y int
+	if err:=testDB.QueryRow("SELECT map_id,pos_x,pos_y FROM characters WHERE id=1").Scan(&mapID,&x,&y);err!=nil{t.Fatal(err)}
+	if mapID!="map_002_field_test" || x!=2 || y!=10 { t.Fatalf("portal transition not persisted: %s %d,%d",mapID,x,y) }
+}
+
+func TestWorldMoveHandlerRejectsDeadCharacter(t *testing.T) {
+	testDB := newWorldMoveTestDB(t,"map_001_village_test",9,12,0)
+	defer testDB.Close()
+	oldDB := db
+	db = testDB
+	defer func(){ db = oldDB }()
+	rec,_ := callWorldMove(t,worldMoveHandler(testDB),1,0)
+	if rec.Code != http.StatusConflict { t.Fatalf("expected dead character conflict, got %d",rec.Code) }
 }
