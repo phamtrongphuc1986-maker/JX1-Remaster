@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -333,8 +334,14 @@ func resetCharacterStats(w http.ResponseWriter, r *http.Request) {
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, 4096)
-	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(v); err != nil {
 		respond(w, 400, map[string]string{"error": "JSON không hợp lệ"})
+		return false
+	}
+	// Từ chối dữ liệu JSON thứ hai hoặc phần dữ liệu thừa sau object đầu tiên.
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		respond(w, 400, map[string]string{"error": "Chỉ chấp nhận một đối tượng JSON"})
 		return false
 	}
 	return true
@@ -459,6 +466,10 @@ func authenticate(r *http.Request) (int64, error) {
 }
 
 func classList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method không được hỗ trợ"})
+		return
+	}
 	respond(w, 200, map[string]any{
 		"count":   len(classes),
 		"classes": classes,
@@ -524,6 +535,10 @@ func createCharacter(w http.ResponseWriter, r *http.Request) {
 }
 
 func listCharacters(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method không được hỗ trợ"})
+		return
+	}
 	userID, err := authenticate(r)
 	if err != nil {
 		respond(w, 401, map[string]string{"error": err.Error()})
