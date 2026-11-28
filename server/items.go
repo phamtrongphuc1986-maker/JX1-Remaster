@@ -187,16 +187,17 @@ func useItemHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		var statResult sql.Result
 		switch req.ItemID {
 		case 1:
-			_, err = tx.Exec(`
+			statResult, err = tx.Exec(`
 				UPDATE character_stats
 				SET skill_points=skill_points+1
 				WHERE character_id=?
 			`, req.CharacterID)
 
 		case 2:
-			_, err = tx.Exec(`
+			statResult, err = tx.Exec(`
 				UPDATE character_stats
 				SET free_stat_resets=free_stat_resets+1
 				WHERE character_id=?
@@ -209,6 +210,10 @@ func useItemHandler(db *sql.DB) http.HandlerFunc {
 
 		if err != nil {
 			http.Error(w, "Không thể sử dụng vật phẩm", 500)
+			return
+		}
+		if affected, rowsErr := statResult.RowsAffected(); rowsErr != nil || affected != 1 {
+			http.Error(w, "Không tìm thấy thuộc tính nhân vật để nhận vật phẩm", 409)
 			return
 		}
 
