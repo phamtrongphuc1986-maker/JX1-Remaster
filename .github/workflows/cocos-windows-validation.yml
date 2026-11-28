@@ -113,7 +113,17 @@ jobs:
 
           $builderLog = Join-Path $project 'temp/builder/log'
           if (Test-Path $builderLog) {
-            Get-ChildItem $builderLog -Recurse -File | ForEach-Object { Write-Host "---- $($_.FullName) ----"; Get-Content $_.FullName -Tail 250 }
+            $builderDiag = Join-Path $diag 'builder-log'
+            New-Item -ItemType Directory -Force -Path $builderDiag | Out-Null
+            Get-ChildItem $builderLog -Recurse -File | ForEach-Object {
+              $relative = $_.FullName.Substring($builderLog.Length).TrimStart('\')
+              $destination = Join-Path $builderDiag $relative
+              $destinationDir = Split-Path -Parent $destination
+              New-Item -ItemType Directory -Force -Path $destinationDir | Out-Null
+              Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
+              Write-Host "---- $($_.FullName) ----"
+              Get-Content $_.FullName -Tail 250
+            }
           }
           if ($code -ne 36) { throw "Cocos Creator build failed with exit code $code (expected 36). See cocos-diagnostics artifact." }
 
@@ -128,11 +138,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jx1m-cocos-startup-diagnostics
-          path: |
-            ${{ runner.temp }}/cocos-diagnostics/
-            client/cocos/temp/builder/log/
-            client/cocos/temp/
-            ${{ env.USERPROFILE }}/.CocosCreator/
+          path: ${{ runner.temp }}/cocos-diagnostics/
           if-no-files-found: ignore
           retention-days: 7
 
