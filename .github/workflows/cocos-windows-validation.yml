@@ -42,9 +42,18 @@ jobs:
         run: |
           $project = Join-Path $env:GITHUB_WORKSPACE 'client/cocos'
           $build = 'build/ci-web-mobile'
-          & "$env:COCOS_CREATOR_EXE" --project "$project" --build "platform=web-mobile;debug=true;buildPath=$build;outputName=jx1m-ci-web-mobile;"
-          $code = $LASTEXITCODE
+          $arguments = "--project `"$project`" --build `"platform=web-mobile;debug=true;buildPath=$build;outputName=jx1m-ci-web-mobile;`" --disable-gpu"
+          $process = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList $arguments -Wait -PassThru
+          $code = $process.ExitCode
+          "Cocos Creator process exit code: $code"
           if ($code -notin @(0, 36)) {
+            $logDir = Join-Path $project 'temp/builder/log'
+            if (Test-Path $logDir) {
+              Get-ChildItem $logDir -Recurse -File | ForEach-Object {
+                Write-Host "---- $($_.FullName) ----"
+                Get-Content $_.FullName -Tail 200
+              }
+            }
             throw "Cocos Creator build failed with exit code $code"
           }
           $output = Join-Path $project $build
@@ -57,6 +66,17 @@ jobs:
             throw 'Cocos Web Mobile build did not produce index.html.'
           }
           "Cocos Web Mobile build verified: $($index.FullName)"
+
+      - name: Upload Cocos build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jx1m-cocos-editor-logs
+          path: |
+            client/cocos/temp/builder/log/
+            client/cocos/temp/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload Web Mobile preview build
         uses: actions/upload-artifact@v4
