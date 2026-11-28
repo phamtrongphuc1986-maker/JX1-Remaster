@@ -1,7 +1,7 @@
 # Phân tích khoảng trống client và vận hành — 28/11/2026
 
 ## Phạm vi
-Rà soát trực tiếp gói `JX1M-Clean-Source-Import.tar.gz` (26 file, 100,119 byte giải nén; SHA-256 đã ghi trong CODEX_HANDOFF_VI.md). Đây là đánh giá source hiện có, không phải kết quả chạy game.
+Cập nhật 28/11/2026 dựa trên source đang có trong nhánh tích hợp `integration/jx1m-clean-monorepo`. Các nhận định về project Cocos bên dưới vẫn là đánh giá source, không phải kết quả mở Editor hoặc chạy game.
 
 ## Client Cocos hiện tại
 Có 9 TypeScript scripts:
@@ -19,14 +19,22 @@ Các giới hạn xác minh được:
 7. Không có WebSocket, snapshot state, reconnect, interpolation hoặc prediction.
 8. Chưa có màn chọn máy chủ, tạo nhân vật hoàn chỉnh, túi đồ tương tác, bảng kỹ năng/nhiệm vụ thực tế hoặc luồng vào bản đồ nối với gameplay.
 
-## Server hiện có
-- API HTTP đăng ký/đăng nhập, lớp nhân vật, stats, kỹ năng, quái, combat, inventory, item, maps, NPC, quest và equipment.
-- Dùng SQLite, bcrypt, bearer token 24 giờ; listen tại `127.0.0.1:8083`.
-- Có endpoint `/health`.
-- Không phải backend realtime MMO: chưa có kết nối WebSocket hoặc cơ chế world/session để đồng bộ nhiều người chơi.
-- Chưa có rate limiting, quản lý session/revoke token hoặc kiểm thử tải.
-- Cần rà soát cấu hình SQLite foreign key, backup/restore, migration và cạnh tranh ghi trước khi dùng dữ liệu thật.
-- Smoke test tạo tài khoản/nhân vật thử và giữ lại dữ liệu thử trong database; chỉ chạy trên DB tạm, tuyệt đối không chạy vào production.
+## Server hiện có — đối chiếu trực tiếp `server/main.go` và các handler
+Server hiện tại là API HTTP prototype dùng SQLite, bcrypt và bearer token có hạn 24 giờ; tiến trình bind `127.0.0.1:8083`. Endpoint đã đăng ký trong source:
+- `GET /health`
+- `POST /api/register`, `POST /api/login`
+- `GET /api/classes`
+- `GET /api/characters`, `POST /api/characters/create`
+- `GET /api/characters/stats`, `POST /api/characters/allocate`, `POST /api/characters/reset-stats`
+- `GET /api/skills`, `GET /api/characters/skills`, `POST /api/skills/learn`, `POST /api/skills/upgrade`
+- `GET /api/monsters`, `POST /api/combat/attack`, `POST /api/characters/revive`
+- `GET /api/inventory`, `POST /api/items/use`
+
+**Chưa có endpoint trong source hiện tại cho bản đồ, NPC, nhiệm vụ, trang bị, bang hội hoặc Tống–Kim.** Không được coi những hệ thống này đã được backend hỗ trợ chỉ vì tài liệu cũ hoặc bản scaffold trước có nhắc tới chúng.
+- Chưa có WebSocket/world session, snapshot state, reconnect hoặc đồng bộ realtime nhiều người chơi.
+- Chưa có rate limiting, thu hồi phiên đăng nhập, kiểm thử tải hoặc quy trình backup/restore đã được xác minh.
+- Cần tiếp tục rà soát migration SQLite, quyền sở hữu, giao dịch nhiều bước và xử lý lỗi trước khi dùng dữ liệu thật.
+- Smoke test tạo tài khoản và nhân vật thử; chỉ chạy với database tạm trong CI, tuyệt đối không chạy vào production.
 
 ## Lộ trình ưu tiên
 ### Gate 1 — Server chạy ổn định
