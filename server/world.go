@@ -315,8 +315,15 @@ func performWorldAttack(db *sql.DB,userID,characterID,worldMonsterID int64)(map[
 	monsterDamage:=0
 	if monster.HP==0 {
 		exp+=monsterReward(monster.MonsterID)
-		for { required:=level*100; if exp<required {break}; exp-=required; level++ }
+		levelsGained := 0
+		for { required:=level*100; if exp<required {break}; exp-=required; level++; levelsGained++ }
 		if _,err=tx.Exec("UPDATE characters SET exp=?,level=? WHERE id=? AND user_id=?",exp,level,characterID,userID);err!=nil{return nil,err}
+		if levelsGained > 0 {
+			increase := levelsGained * 10
+			if _,err=tx.Exec("UPDATE character_stats SET hp=hp+?,current_hp=hp+?,mp=mp+? WHERE character_id=?",increase,increase,levelsGained*5,characterID);err!=nil{return nil,err}
+			maxHP += increase
+			currentHP = maxHP
+		}
 		_,err=tx.Exec("UPDATE world_monsters SET hp=0,respawn_at=?,version=? WHERE id=? AND hp>0",time.Now().Unix()+int64(monsterRespawn(monster.MonsterID)),monster.Version,worldMonsterID)
 	} else {
 		monsterDamage=monster.Level*3+2-defense; if monsterDamage<1{monsterDamage=1}
