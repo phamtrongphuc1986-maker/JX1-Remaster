@@ -69,3 +69,30 @@ func TestListCharactersRejectsNonGETBeforeAuthentication(t *testing.T) {
 		t.Fatalf("status = %d, want 405", rec.Code)
 	}
 }
+
+func TestGameplayHandlersEnforceMethods(t *testing.T) {
+	tests := []struct {
+		name string
+		handler http.HandlerFunc
+		method string
+	}{
+		{"skills catalog", listSkillsHandler(nil), http.MethodPost},
+		{"learn skill", learnSkillHandler(nil), http.MethodGet},
+		{"upgrade skill", upgradeSkillHandler(nil), http.MethodGet},
+		{"inventory", inventoryHandler(nil), http.MethodPost},
+		{"use item", useItemHandler(nil), http.MethodGet},
+		{"list monsters", listMonstersHandler(nil), http.MethodPost},
+		{"attack monster", attackMonsterHandler(nil), http.MethodGet},
+		{"revive character", reviveCharacterHandler(nil), http.MethodGet},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, "/", nil)
+			rec := httptest.NewRecorder()
+			tt.handler(rec, req)
+			if rec.Code != http.StatusMethodNotAllowed {
+				t.Fatalf("status = %d, want 405", rec.Code)
+			}
+		})
+	}
+}
