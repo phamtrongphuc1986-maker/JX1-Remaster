@@ -9,19 +9,24 @@ Dự án MMORPG online phong cách JX1, dùng **Go** cho game server và **Cocos
 
 - `server/`: source Go JX1M Clean 0.4.0, module `jx1m-clean-v040`, yêu cầu Go 1.26.0. Có API đăng ký/đăng nhập, 10 môn phái, tạo nhân vật, thuộc tính, EXP, kỹ năng, quái, chiến đấu và túi đồ.
 - `client/cocos/package.json`: manifest project mục tiêu Cocos Creator 3.8.x.
-- `client/cocos/assets/scripts/`: TypeScript đã được đưa vào đúng Assets của Creator, gồm bản đồ, nhân vật, chiến đấu, túi đồ, bootstrap scene và REST client.
+- `client/cocos/assets/scripts/`: TypeScript trong Assets, gồm bản đồ, nhân vật, chiến đấu, túi đồ, bootstrap, luồng tài khoản và REST world client.
+- `client/cocos/assets/scenes/Main.scene`: scene serialized gắn component `JX1GameEntry`, có generator và CI kiểm tra object references.
+- `server/world.go`: trạng thái thế giới chung, di chuyển/cổng bản đồ, snapshot người chơi/quái và chiến đấu authoritative.
 - `client/cocos/assets/resources/maps/`: JSON bản đồ thử nghiệm 20x20, tile 64x32.
 - `client/cocos/assets/resources/maps/` và `client/cocos/data/maps/`: hai bản đồ thử nghiệm 20x20.
 - `server/scripts/smoke-test.sh`: kiểm tra các API hiện có trên database thử nghiệm.
 
 ## Những phần chưa hoàn thành
 
-- Project manifest và Assets đã được dựng; scene serialized `Main.scene` vẫn cần được tạo/lưu trong Cocos Creator Editor để Creator sinh UUID metadata hợp lệ. Chưa xác nhận Editor import/compile.
-- REST client đã có cho các API hiện hữu; chưa kết nối vào luồng đăng nhập/UI thực tế và chưa có URL HTTPS staging.
+- Main.scene và metadata đã được tạo, nhưng chưa được mở bằng Cocos Creator Editor để xác nhận import/compile/runtime.
+- Chưa có domain, HTTPS certificate, reverse proxy hoặc staging; server chưa được triển khai ra VPS.
+- World sync hiện dùng REST polling 1 giây, chưa có WebSocket hay load test.
+- Kỹ năng K/L, AUTO, túi đồ và AI quái chưa được chuyển hết sang server authoritative.
+- Chưa kiểm thử đồng thời hai thiết bị Android; chưa kiểm tra giao diện trên OPPO.
 - Còn thiếu sprite, animation, VFX, âm thanh và asset có license.
-- Chưa có đồng bộ di chuyển/chiến đấu nhiều người chơi realtime qua WebSocket.
-- Một số hệ thống MMORPG như nhiệm vụ, NPC, trang bị, bang hội, Tống–Kim và vận hành máy chủ cần tiếp tục phát triển.
-- Chưa có APK/AAB đã build và kiểm thử trên OPPO.
+- Nhiệm vụ, NPC, trang bị, bang hội, Tống–Kim, chống gian lận và vận hành máy chủ cần tiếp tục phát triển.
+- Chưa có APK/AAB đã build và cài thử.
+
 
 ## Nguyên tắc an toàn
 
