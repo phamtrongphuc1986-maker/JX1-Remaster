@@ -145,6 +145,9 @@ type worldCharacterView struct {
 	Name string `json:"name"`
 	ClassName string `json:"class_name"`
 	Level int `json:"level"`
+	Exp int `json:"exp"`
+	MP int `json:"mp"`
+	MaxMP int `json:"max_mp"`
 	X int `json:"x"`
 	Y int `json:"y"`
 	HP int `json:"hp"`
@@ -188,15 +191,15 @@ func worldSnapshotHandler(db *sql.DB) http.HandlerFunc {
 
 		var self worldCharacterView
 		var selfClassID int
-		err = tx.QueryRow(`SELECT c.id,c.name,c.class_id,c.level,c.pos_x,c.pos_y,s.current_hp,s.hp
+		err = tx.QueryRow(`SELECT c.id,c.name,c.class_id,c.level,c.exp,s.mp,c.pos_x,c.pos_y,s.current_hp,s.hp
 			FROM characters c JOIN character_stats s ON s.character_id=c.id
 			WHERE c.id=? AND c.user_id=?`, characterID,userID).
-			Scan(&self.ID,&self.Name,&selfClassID,&self.Level,&self.X,&self.Y,&self.HP,&self.MaxHP)
+			Scan(&self.ID,&self.Name,&selfClassID,&self.Level,&self.Exp,&self.MP,&self.X,&self.Y,&self.HP,&self.MaxHP)
 		if err != nil { respond(w,500,map[string]string{"error":"Không đọc được trạng thái nhân vật"}); return }
 		self.ClassName = classNameByID(selfClassID)
 
 		players := []worldCharacterView{}
-		rows, err := tx.Query(`SELECT c.id,c.name,c.class_id,c.level,c.pos_x,c.pos_y,s.current_hp,s.hp
+		rows, err := tx.Query(`SELECT c.id,c.name,c.class_id,c.level,c.exp,s.mp,c.pos_x,c.pos_y,s.current_hp,s.hp
 			FROM characters c JOIN character_stats s ON s.character_id=c.id
 			JOIN world_presence p ON p.character_id=c.id
 			WHERE c.map_id=? AND p.last_seen_at>? ORDER BY c.id`,mapID,now-20)
@@ -204,8 +207,9 @@ func worldSnapshotHandler(db *sql.DB) http.HandlerFunc {
 		for rows.Next() {
 			var p worldCharacterView
 			var classID int
-			if err=rows.Scan(&p.ID,&p.Name,&classID,&p.Level,&p.X,&p.Y,&p.HP,&p.MaxHP); err != nil { rows.Close(); respond(w,500,map[string]string{"error":"Dữ liệu người chơi không hợp lệ"}); return }
+			if err=rows.Scan(&p.ID,&p.Name,&classID,&p.Level,&p.Exp,&p.MP,&p.X,&p.Y,&p.HP,&p.MaxHP); err != nil { rows.Close(); respond(w,500,map[string]string{"error":"Dữ liệu người chơi không hợp lệ"}); return }
 			p.ClassName = classNameByID(classID)
+			p.MaxMP = p.MP
 			players=append(players,p)
 		}
 		if err=rows.Err(); err != nil { rows.Close(); respond(w,500,map[string]string{"error":"Lỗi đọc người chơi"}); return }
