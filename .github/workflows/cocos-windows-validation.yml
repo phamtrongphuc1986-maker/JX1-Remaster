@@ -41,12 +41,16 @@ jobs:
         shell: pwsh
         run: |
           $project = Join-Path $env:GITHUB_WORKSPACE 'client/cocos'
-          $build = 'build/ci-web-mobile'
-          $arguments = "--project `"$project`" --build `"platform=web-mobile;debug=true;buildPath=$build;outputName=jx1m-ci-web-mobile;`" --disable-gpu"
+          $buildRoot = Join-Path $project 'build'
+          if (Test-Path $buildRoot) {
+            Remove-Item -Path $buildRoot -Recurse -Force
+          }
+          $arguments = "--project `"$project`" --build `"platform=web-mobile;debug=true;buildPath=project://build;outputName=jx1m-ci-web-mobile;`" --disable-gpu"
           $process = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList $arguments -Wait -PassThru
           $code = $process.ExitCode
           "Cocos Creator process exit code: $code"
-          if ($code -notin @(0, 36)) {
+          # Cocos Creator 3.8 documents exit code 36 as successful build.
+          if ($code -ne 36) {
             $logDir = Join-Path $project 'temp/builder/log'
             if (Test-Path $logDir) {
               Get-ChildItem $logDir -Recurse -File | ForEach-Object {
@@ -54,16 +58,15 @@ jobs:
                 Get-Content $_.FullName -Tail 200
               }
             }
-            throw "Cocos Creator build failed with exit code $code"
+            throw "Cocos Creator build failed with exit code $code (expected 36)."
           }
-          $output = Join-Path $project $build
-          if (-not (Test-Path $output)) {
-            throw "Cocos build output directory was not created: $output"
+          if (-not (Test-Path $buildRoot)) {
+            throw "Cocos Creator returned success but build root is missing: $buildRoot"
           }
-          $index = Get-ChildItem -Path $output -Filter 'index.html' -Recurse |
+          $index = Get-ChildItem -Path $buildRoot -Filter 'index.html' -Recurse |
             Select-Object -First 1
           if (-not $index) {
-            throw 'Cocos Web Mobile build did not produce index.html.'
+            throw "Cocos Creator reported success but no index.html exists under $buildRoot"
           }
           "Cocos Web Mobile build verified: $($index.FullName)"
 
@@ -82,6 +85,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jx1m-cocos-web-mobile-preview
-          path: client/cocos/build/ci-web-mobile/
+          path: client/cocos/build/
           if-no-files-found: error
           retention-days: 7
