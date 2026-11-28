@@ -135,6 +135,7 @@ export class AuthFlowController extends Component {
         const edit = node.addComponent(EditBox);
         edit.textLabel = textLabel;
         edit.placeholderLabel = placeholderLabel;
+        edit.placeholder = placeholder;
         edit.string = initial;
         edit.maxLength = 72;
         if (password) edit.inputFlag = EditBox.InputFlag.PASSWORD;
