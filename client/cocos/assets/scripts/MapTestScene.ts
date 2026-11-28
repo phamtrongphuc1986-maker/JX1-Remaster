@@ -114,7 +114,241 @@ private monsterNodes: Node[] = [];
 private monsterHpGraphics: Graphics[] = [];
 private monsterThinkTimers: Map<MonsterController, number> = new Map();
 private monsterAttackTimers: Map<MonsterController, number> = new Map();
+    private onlineMode = false;
+    private onlineApi: GameApi | null = null;
+    private onlineCharacterId = 0;
+    private onlinePollTimer = 0;
+    private onlineSnapshot: WorldSnapshot | null = null;
+    private onlineSnapshotPending = false;
+    private onlineMovePending = false;
+    private onlineAttackPending = false;
+    private onlineMonsterNodes: Map<number, Node> = new Map();
+    private onlinePlayerNodes: Map<number, Node> = new Map();
 
+
+    public async connectOnline(api: GameApi, characterId: number): Promise<boolean> {
+        this.onlineMode = true;
+        this.onlineApi = api;
+        this.onlineCharacterId = characterId;
+        this.autoCombat = false;
+        this.onlinePollTimer = 0;
+        const result = await api.getWorldSnapshot(characterId);
+        if (!result.ok || !result.data) {
+            console.error('[JX1 Online] Không lấy được trạng thái thế giới:', result.error);
+            this.onlineMode = false;
+            this.onlineApi = null;
+            return false;
+        }
+        const loaded = await this.loadOnlineMap(result.data.map_id);
+        if (!loaded) {
+            this.onlineMode = false;
+            this.onlineApi = null;
+            return false;
+        }
+        this.applyOnlineSnapshot(result.data);
+        return true;
+    }
+
+    private loadOnlineMap(mapId: string): Promise<boolean> {
+        return new Promise(resolve => {
+            resources.load('maps/' + mapId, JsonAsset, (error, asset) => {
+                if (error || !asset) {
+                    console.error('[JX1 Online] Không tải được bản đồ:', mapId, error);
+                    resolve(false);
+                    return;
+                }
+                const data = asset.json as MapDefinition;
+                const errors = MapDataLoader.validate(data);
+                if (errors.length > 0) {
+                    console.error('[JX1 Online] Dữ liệu bản đồ không hợp lệ:', errors);
+                    resolve(false);
+                    return;
+                }
+                this.mapData = data;
+                resolve(true);
+            });
+        });
+    }
+
+    private async refreshOnlineWorld(): Promise<boolean> {
+        if (!this.onlineApi || this.onlineSnapshotPending) return false;
+        this.onlineSnapshotPending = true;
+        const result = await this.onlineApi.getWorldSnapshot(this.onlineCharacterId);
+        this.onlineSnapshotPending = false;
+        if (!result.ok || !result.data) {
+            console.warn('[JX1 Online] Đồng bộ thế giới thất bại:', result.error);
+            return false;
+        }
+        if (!this.mapData || this.mapData.map_id !== result.data.map_id) {
+            if (!await this.loadOnlineMap(result.data.map_id)) return false;
+        }
+        this.applyOnlineSnapshot(result.data);
+        return true;
+    }
+
+    private applyOnlineSnapshot(snapshot: WorldSnapshot): void {
+        if (!this.mapData || this.mapData.map_id !== snapshot.map_id) return;
+        this.onlineSnapshot = snapshot;
+        const character = snapshot.character;
+        this.gridX = character.x;
+        this.gridY = character.y;
+        if (!this.characterController) {
+            this.characterController = new CharacterController(character.x, character.y);
+        }
+        this.characterController.setPosition(character.x, character.y);
+        this.characterController.data.name = character.name;
+        this.characterController.data.level = character.level;
+        this.characterController.data.exp = character.exp;
+        this.characterController.data.hp = character.hp;
+        this.characterController.data.maxHp = character.max_hp;
+        this.characterController.data.mp = character.mp;
+        this.characterController.data.maxMp = character.max_mp;
+        this.playerDead = character.hp <= 0;
+
+        this.removeLayer('GroundTiles');
+        this.removeLayer('ObstacleTiles');
+        this.removeLayer('MonsterLayer');
+        this.removeLayer('OnlineMonsterLayer');
+        this.removeLayer('OnlinePlayersLayer');
+        this.monsterControllers = [];
+        this.monsterNodes = [];
+        this.monsterHpGraphics = [];
+        this.drawGround();
+        this.drawObstacles();
+        this.drawOnlineMonsters(snapshot.monsters);
+        this.drawOnlinePlayers(snapshot.players);
+
+        if (!this.playerNode) this.createPlayer();
+        else this.updatePlayerPosition();
+        this.followCamera();
+        this.updatePlayerHud();
+    }
+
+    private drawOnlineMonsters(monsters: WorldMonster[]): void {
+        const layer = new Node('OnlineMonsterLayer');
+        layer.setParent(this.node);
+        this.onlineMonsterNodes.clear();
+        for (const monster of monsters) {
+            const node = new Node('WorldMonster_' + monster.id);
+            node.setParent(layer);
+            const pos = IsometricGrid.gridToLocal(monster.x, monster.y);
+            node.setPosition(pos.x, pos.y, 1);
+            const graphics = node.addComponent(Graphics);
+            graphics.fillColor = new Color(35, 55, 35, 100);
+            graphics.ellipse(0, -7, 13, 5);
+            graphics.fill();
+            graphics.fillColor = monster.hp > 0
+                ? new Color(65, 205, 125, 255)
+                : new Color(90, 90, 90, 180);
+            graphics.ellipse(0, 1, 12, 10);
+            graphics.fill();
+            const nameNode = new Node('MonsterName');
+            nameNode.setParent(node);
+            nameNode.setPosition(0, 30, 0);
+            nameNode.addComponent(UITransform).setContentSize(100, 18);
+            const nameLabel = nameNode.addComponent(Label);
+            nameLabel.string = monster.name + (monster.hp > 0 ? '' : ' (hồi sinh)');
+            nameLabel.fontSize = 10;
+            nameLabel.color = new Color(255, 235, 190, 255);
+            const hpNode = new Node('MonsterHP');
+            hpNode.setParent(node);
+            hpNode.setPosition(0, 21, 0);
+            const hpGraphics = hpNode.addComponent(Graphics);
+            hpGraphics.fillColor = new Color(35, 25, 25, 230);
+            hpGraphics.fillRect(-17, -2, 34, 4);
+            const ratio = monster.max_hp > 0 ? Math.max(0, monster.hp / monster.max_hp) : 0;
+            hpGraphics.fillColor = new Color(70, 205, 90, 255);
+            hpGraphics.fillRect(-17, -2, 34 * ratio, 4);
+            this.onlineMonsterNodes.set(monster.id, node);
+        }
+    }
+
+    private drawOnlinePlayers(players: WorldSnapshot['players']): void {
+        const layer = new Node('OnlinePlayersLayer');
+        layer.setParent(this.node);
+        this.onlinePlayerNodes.clear();
+        for (const player of players) {
+            if (player.id === this.onlineCharacterId) continue;
+            const node = new Node('RemotePlayer_' + player.id);
+            node.setParent(layer);
+            const pos = IsometricGrid.gridToLocal(player.x, player.y);
+            node.setPosition(pos.x, pos.y, 2);
+            const graphics = node.addComponent(Graphics);
+            graphics.fillColor = player.hp > 0
+                ? new Color(80, 170, 255, 255)
+                : new Color(100, 100, 110, 200);
+            graphics.circle(0, 0, 12);
+            graphics.fill();
+            const labelNode = new Node('RemotePlayerName');
+            labelNode.setParent(node);
+            labelNode.setPosition(0, 28, 0);
+            labelNode.addComponent(UITransform).setContentSize(120, 18);
+            const label = labelNode.addComponent(Label);
+            label.string = player.name + ' Lv.' + player.level;
+            label.fontSize = 10;
+            label.color = new Color(190, 225, 255, 255);
+            this.onlinePlayerNodes.set(player.id, node);
+        }
+    }
+
+    private async moveOnlineCharacter(dx: number, dy: number): Promise<void> {
+        if (!this.onlineApi || this.onlineMovePending || this.playerDead) return;
+        this.onlineMovePending = true;
+        const result = await this.onlineApi.moveWorldCharacter(this.onlineCharacterId, dx, dy);
+        this.onlineMovePending = false;
+        if (!result.ok || !result.data) {
+            if (result.status !== 429) console.warn('[JX1 Online] Di chuyển bị từ chối:', result.error);
+            return;
+        }
+        if (result.data.map_id !== this.mapData?.map_id) {
+            await this.refreshOnlineWorld();
+            return;
+        }
+        this.gridX = result.data.x;
+        this.gridY = result.data.y;
+        this.characterController?.setPosition(this.gridX, this.gridY);
+        this.walkAnimationRemaining = 0.22;
+        this.updatePlayerPosition();
+        this.followCamera();
+    }
+
+    private async attackOnlineNearestMonster(): Promise<void> {
+        if (!this.onlineApi || !this.onlineSnapshot || this.onlineAttackPending || this.playerDead) return;
+        let target: WorldMonster | null = null;
+        let nearest = 999;
+        for (const monster of this.onlineSnapshot.monsters) {
+            if (monster.hp <= 0) continue;
+            const distance = Math.max(Math.abs(this.gridX - monster.x), Math.abs(this.gridY - monster.y));
+            if (distance <= 1 && distance < nearest) {
+                target = monster;
+                nearest = distance;
+            }
+        }
+        if (!target) {
+            console.log('[JX1 Online] Không có quái vật trong tầm đánh.');
+            return;
+        }
+        this.onlineAttackPending = true;
+        const result = await this.onlineApi.attackWorldMonster(this.onlineCharacterId, target.id);
+        this.onlineAttackPending = false;
+        if (!result.ok || !result.data) {
+            console.warn('[JX1 Online] Server từ chối đòn đánh:', result.error);
+            return;
+        }
+        console.log('[JX1 Online] ' + result.data.monster_name + ': -' +
+            result.data.damage + ' HP; quái phản công -' + result.data.monster_damage + ' HP.');
+        await this.refreshOnlineWorld();
+    }
+
+    private async reviveOnlineCharacter(): Promise<void> {
+        if (!this.onlineApi) return;
+        const result = await this.onlineApi.reviveCharacter(this.onlineCharacterId);
+        if (!result.ok) {
+            console.warn('[JX1 Online] Hồi sinh thất bại:', result.error);
+            return;
+        }
+        await this.refreshOnlineWorld();
+    }
 
     start() {
         this.createMobileControls();
@@ -156,6 +390,9 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
                 }
 
                 this.mapData = data;
+                if (this.onlineMode) {
+                    return;
+                }
 
                 const spawn = data.spawn_points.find(
                     item => item.type === 'player'
@@ -220,8 +457,16 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
         }
 
         this.updateMobileControls(dt);
-        this.updateDroppedItems();
-        this.updateMonsterAI(dt);
+        if (this.onlineMode) {
+            this.onlinePollTimer -= dt;
+            if (this.onlinePollTimer <= 0 && !this.onlineSnapshotPending) {
+                this.onlinePollTimer = 1.0;
+                void this.refreshOnlineWorld();
+            }
+        } else {
+            this.updateDroppedItems();
+            this.updateMonsterAI(dt);
+        }
         this.updatePlayerHud();
     }
 
@@ -434,6 +679,7 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
     }
 
     private toggleAutoCombat() {
+        if (this.onlineMode) { console.warn('[JX1 Online] Tự động đánh chưa bật trong chế độ server-authoritative.'); return; }
         this.autoCombat = !this.autoCombat;
         if (this.mobileAutoLabel) {
             this.mobileAutoLabel.string = this.autoCombat ? 'AUTO ON' : 'AUTO';
@@ -626,6 +872,7 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
     }
 
     private movePlayer(dx: number, dy: number) {
+        if (this.onlineMode) { void this.moveOnlineCharacter(dx, dy); return; }
         if (this.playerDead) return;
         if (!this.mapData) return;
 
@@ -657,6 +904,7 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
     }
 
     private checkPortal() {
+        if (this.onlineMode) return;
         if (!this.mapData || this.transitioning) return;
 
         const portal = this.mapData.portals.find(
@@ -777,6 +1025,7 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
     // C2: Tao va hien thi quai vat theo monster_spawns cua tung ban do.
     
     private attackNearestMonster() {
+        if (this.onlineMode) { void this.attackOnlineNearestMonster(); return; }
         if (this.playerDead) return;
         if (!this.characterController || !this.mapData) return;
 
@@ -921,6 +1170,7 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
 
     // C4.10: Ky nang danh lan kich hoat bang phim K.
     private useAreaSkill() {
+        if (this.onlineMode) { console.warn('[JX1 Online] Kỹ năng sẽ mở khi server có API kỹ năng realtime.'); return; }
         if (this.playerDead || this.transitioning) return;
         if (!this.characterController || !this.mapData) return;
 
@@ -1157,6 +1407,7 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
 
     // C4.11: Ky nang chem kiem khi hinh non bang phim L.
     private useSwordSkill() {
+        if (this.onlineMode) { console.warn('[JX1 Online] Kỹ năng sẽ mở khi server có API kỹ năng realtime.'); return; }
         if (this.playerDead || this.transitioning) return;
         if (!this.characterController || !this.mapData) return;
 
@@ -2168,6 +2419,12 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
     // C4.9: Xu ly nhan vat tu tran.
     private handlePlayerDeath() {
         if (this.playerDead || !this.characterController) return;
+        if (this.onlineMode) {
+            this.playerDead = true;
+            console.log('[JX1 Online] Nhân vật tử trận; yêu cầu server hồi sinh sau 5 giây.');
+            this.scheduleOnce(() => { void this.reviveOnlineCharacter(); }, 5);
+            return;
+        }
 
         this.playerDead = true;
         console.log('Nhan vat da tu tran! Se hoi sinh sau 5 giay.');
