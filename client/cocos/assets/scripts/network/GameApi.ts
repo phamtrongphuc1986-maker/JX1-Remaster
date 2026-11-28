@@ -56,6 +56,9 @@ export interface WorldCharacter {
     name: string;
     class_name: string;
     level: number;
+    exp: number;
+    mp: number;
+    max_mp: number;
     x: number;
     y: number;
     hp: number;
