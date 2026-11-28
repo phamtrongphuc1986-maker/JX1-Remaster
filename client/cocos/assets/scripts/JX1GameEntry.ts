@@ -1,12 +1,12 @@
-import { _decorator, Camera, Color, Component, Node, view } from 'cc';
+import { _decorator, Camera, Canvas, Color, Component, Node, UITransform, view } from 'cc';
+import { AuthFlowController } from './AuthFlowController';
 import { MapTestScene } from './MapTestScene';
 
 const { ccclass, property } = _decorator;
 
 /**
- * Entry component for an empty Cocos Creator scene.
- * Attach this component to the Scene root node in the Editor.
- * It creates the orthographic camera and the prototype map world at runtime.
+ * Runtime bootstrap for the map prototype and account/character UI.
+ * Attach this component to the root node of the Editor-created Main.scene.
  */
 @ccclass('JX1GameEntry')
 export class JX1GameEntry extends Component {
@@ -23,16 +23,23 @@ export class JX1GameEntry extends Component {
         camera.orthoHeight = this.orthographicHeight;
         camera.clearColor = new Color(18, 25, 34, 255);
 
+        const visible = view.getVisibleSize();
         const worldNode = new Node('World');
         worldNode.setParent(this.node);
 
         const mapScene = worldNode.addComponent(MapTestScene);
         mapScene.cameraNode = cameraNode;
-
-        const visible = view.getVisibleSize();
         mapScene.viewWidth = visible.width;
         mapScene.viewHeight = visible.height;
 
-        console.info('[JX1] Scene bootstrap completed. Loading test map...');
+        const canvasNode = new Node('Canvas');
+        canvasNode.setParent(this.node);
+        canvasNode.layer = 1 << 25;
+        canvasNode.addComponent(UITransform).setContentSize(visible.width, visible.height);
+        const canvas = canvasNode.addComponent(Canvas);
+        canvas.cameraComponent = camera;
+        canvasNode.addComponent(AuthFlowController);
+
+        console.info('[JX1] Map prototype and account/character flow initialized.');
     }
 }
