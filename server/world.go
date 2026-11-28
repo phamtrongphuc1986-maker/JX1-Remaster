@@ -2,9 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -184,19 +182,13 @@ func worldSnapshotHandler(db *sql.DB) http.HandlerFunc {
 			ON CONFLICT(character_id) DO UPDATE SET user_id=excluded.user_id,last_seen_at=excluded.last_seen_at`, characterID,userID,now); err != nil { respond(w,500,map[string]string{"error":"Không cập nhật được trạng thái online"}); return }
 
 		var self worldCharacterView
-		err = tx.QueryRow(`
-			SELECT c.id,c.name,cl.name,c.level,c.pos_x,c.pos_y,s.current_hp,s.hp
+		var selfClassID int
+		err = tx.QueryRow(`SELECT c.id,c.name,c.class_id,c.level,c.pos_x,c.pos_y,s.current_hp,s.hp
 			FROM characters c JOIN character_stats s ON s.character_id=c.id
-			JOIN (SELECT id,name FROM (SELECT id,name FROM characters)) dummy ON dummy.id=c.id
-			LEFT JOIN (SELECT id,name FROM (SELECT 1 AS id, 'Thiếu Lâm' AS name)) cl ON 1=0
-			WHERE c.id=? AND c.user_id=?`, characterID,userID).Scan(&self.ID,&self.Name,&self.ClassName,&self.Level,&self.X,&self.Y,&self.HP,&self.MaxHP)
-		if err != nil {
-			// Query below uses the in-memory class catalog and avoids requiring a class table.
-			err = tx.QueryRow(`SELECT c.id,c.name,c.class_id,c.level,c.pos_x,c.pos_y,s.current_hp,s.hp
-				FROM characters c JOIN character_stats s ON s.character_id=c.id WHERE c.id=? AND c.user_id=?`,characterID,userID).
-				Scan(&self.ID,&self.Name,&self.ClassName,&self.Level,&self.X,&self.Y,&self.HP,&self.MaxHP)
-			if err != nil { respond(w,500,map[string]string{"error":"Không đọc được trạng thái nhân vật"}); return }
-		}
+			WHERE c.id=? AND c.user_id=?`, characterID,userID).
+			Scan(&self.ID,&self.Name,&selfClassID,&self.Level,&self.X,&self.Y,&self.HP,&self.MaxHP)
+		if err != nil { respond(w,500,map[string]string{"error":"Không đọc được trạng thái nhân vật"}); return }
+		self.ClassName = classNameByID(selfClassID)
 
 		players := []worldCharacterView{}
 		rows, err := tx.Query(`SELECT c.id,c.name,c.class_id,c.level,c.pos_x,c.pos_y,s.current_hp,s.hp
@@ -228,17 +220,11 @@ func worldSnapshotHandler(db *sql.DB) http.HandlerFunc {
 		rows.Close()
 		if err=tx.Commit(); err != nil { respond(w,500,map[string]string{"error":"Không lưu được snapshot"}); return }
 
-		self.ClassName = classNameForCharacter(db, characterID, userID)
 		respond(w,200,map[string]any{"map_id":mapID,"server_time":now,"character":self,"players":players,"monsters":monsters})
 	}
 }
 
 func classNameByID(id int) string { for _, c := range classes { if c.ID==id { return c.Name } }; return "Không rõ môn phái" }
-func classNameForCharacter(db *sql.DB, characterID,userID int64) string {
-	var id int
-	if db.QueryRow("SELECT class_id FROM characters WHERE id=? AND user_id=?",characterID,userID).Scan(&id)!=nil { return "" }
-	return classNameByID(id)
-}
 
 func worldMoveHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter,r *http.Request) {
@@ -300,6 +286,9 @@ func performWorldAttack(db *sql.DB,userID,characterID,worldMonsterID int64)(map[
 	if monster.HP<=0 {
 		if monster.RespawnAt>time.Now().Unix(){return nil,errors.New("Quái vật đang hồi sinh")}
 		monster.HP=monster.MaxHP
+		monster.RespawnAt=0
+		monster.Version++
+		if _,err=tx.Exec("UPDATE world_monsters SET hp=?,respawn_at=0,version=? WHERE id=? AND hp<=0",monster.HP,monster.Version,worldMonsterID);err!=nil{return nil,err}
 	}
 	if maxInt(absInt(x-monster.X),absInt(y-monster.Y))>1{return nil,errors.New("Quái vật ở quá xa")}
 	damage:=attack
@@ -338,5 +327,3 @@ func monsterReward(monsterID int) int { for _,m:=range monsterCatalog{if m.ID==m
 func monsterRespawn(monsterID int) int { for _,m:=range monsterCatalog{if m.ID==monsterID{return m.RespawnSeconds}};return 10 }
 func maxInt(a,b int)int{if a>b{return a};return b}
 
-var _ = fmt.Sprintf
-var _ = json.Valid
