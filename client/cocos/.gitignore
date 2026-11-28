@@ -3,7 +3,12 @@ library/
 local/
 temp/
 build/
-profiles/
+profiles/*
+!profiles/v2/
+profiles/v2/*
+!profiles/v2/packages/
+profiles/v2/packages/*
+!profiles/v2/packages/builder.json
 *.log
 .DS_Store
 Thumbs.db
