@@ -45,14 +45,17 @@ jobs:
           if (Test-Path $buildRoot) {
             Remove-Item -Path $buildRoot -Recurse -Force
           }
-          # Pass buildPath as a native absolute path: the CLI string parser
-          # rejects the 'project://' URL form used inside stored profiles
-          # (Creator exits immediately with code 32 = invalid parameters).
-          $arguments = "--project `"$project`" --build `"platform=web-mobile;debug=true;buildPath=$buildRoot;outputName=jx1m-ci-web-mobile;`" --disable-gpu"
+
+          # The archived successful Creator 3.8.0 run confirms project://build
+          # is accepted and produces build/jx1m-ci-web-mobile. Keep the path
+          # project-relative; an absolute D:\ path caused Creator to exit -1
+          # before it emitted any builder logs in the subsequent runs.
+          $buildArgs = 'platform=web-mobile;debug=true;buildPath=project://build;outputName=jx1m-ci-web-mobile;'
+          $arguments = "--project `"$project`" --build `"$buildArgs`" --disable-gpu"
           $process = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList $arguments -Wait -PassThru
           $code = $process.ExitCode
           "Cocos Creator process exit code: $code"
-          # Cocos Creator 3.8 documents exit code 36 as successful build.
+
           if ($code -ne 36) {
             $logDir = Join-Path $project 'temp/builder/log'
             if (Test-Path $logDir) {
@@ -61,53 +64,34 @@ jobs:
                 Get-Content $_.FullName -Tail 200
               }
             }
-            # Surface the exit code and the key builder-log lines as check
-            # annotations so the failure is readable without raw log access.
-            function Escape-Wf([string]$s) {
-              if ($s.Length -gt 400) { $s = $s.Substring(0, 400) }
-              return $s -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
-            }
-            Write-Host "::error title=CocosExitCode::Cocos Creator exited with code $code (expected 36 = success, 32 = invalid build parameters, 34 = build error)."
-            $emitted = 0
-            $candidates = @()
-            if (Test-Path $logDir) {
-              $candidates += Get-ChildItem $logDir -Recurse -File | Sort-Object LastWriteTime -Descending
-            }
-            $editorLogDir = Join-Path $env:APPDATA 'CocosCreator/logs'
-            if (Test-Path $editorLogDir) {
-              $candidates += Get-ChildItem $editorLogDir -File -Filter '*.log' | Sort-Object LastWriteTime -Descending | Select-Object -First 2
-            }
-            foreach ($file in $candidates) {
-              if ($emitted -ge 35) { break }
-              $hits = Select-String -Path $file.FullName -Pattern 'error|failed|exception' -SimpleMatch:$false |
-                Select-Object -Last 12
-              foreach ($hit in $hits) {
-                if ($emitted -ge 35) { break }
-                Write-Host "::error title=CocosBuildLog::$(Escape-Wf "$($file.Name): $($hit.Line.Trim())")"
-                $emitted++
+            $editorLogRoots = @(
+              (Join-Path $env:APPDATA 'CocosCreator'),
+              (Join-Path $env:LOCALAPPDATA 'CocosCreator'),
+              (Join-Path $env:USERPROFILE '.CocosCreator')
+            )
+            foreach ($root in $editorLogRoots) {
+              if (Test-Path $root) {
+                Get-ChildItem $root -Recurse -File -ErrorAction SilentlyContinue |
+                  Where-Object { $_.Extension -in @('.log', '.txt') } |
+                  Sort-Object LastWriteTime -Descending |
+                  Select-Object -First 10 |
+                  ForEach-Object {
+                    Write-Host "---- $($_.FullName) ----"
+                    Get-Content $_.FullName -Tail 100 -ErrorAction SilentlyContinue
+                  }
               }
-            }
-            if ($candidates.Count -gt 0) {
-              $tail = Get-Content $candidates[0].FullName -Tail 8
-              foreach ($line in $tail) {
-                if ($emitted -ge 45) { break }
-                if ($line.Trim().Length -gt 0) {
-                  Write-Host "::error title=CocosBuildLogTail::$(Escape-Wf $line.Trim())"
-                  $emitted++
-                }
-              }
-            } else {
-              Write-Host "::error title=CocosBuildLog::No builder log files were produced under temp/builder/log."
             }
             throw "Cocos Creator build failed with exit code $code (expected 36)."
           }
-          if (-not (Test-Path $buildRoot)) {
-            throw "Cocos Creator returned success but build root is missing: $buildRoot"
+
+          $output = Join-Path $buildRoot 'jx1m-ci-web-mobile'
+          if (-not (Test-Path $output)) {
+            throw "Cocos Creator returned success but output folder is missing: $output"
           }
-          $index = Get-ChildItem -Path $buildRoot -Filter 'index.html' -Recurse |
+          $index = Get-ChildItem -Path $output -Filter 'index.html' -Recurse |
             Select-Object -First 1
           if (-not $index) {
-            throw "Cocos Creator reported success but no index.html exists under $buildRoot"
+            throw "Cocos Creator reported success but no index.html exists under $output"
           }
           "Cocos Web Mobile build verified: $($index.FullName)"
 
@@ -123,9 +107,10 @@ jobs:
           retention-days: 7
 
       - name: Upload Web Mobile preview build
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: jx1m-cocos-web-mobile-preview
-          path: client/cocos/build/
+          path: client/cocos/build/jx1m-ci-web-mobile/
           if-no-files-found: error
           retention-days: 7
