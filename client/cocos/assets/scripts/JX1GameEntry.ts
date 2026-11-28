@@ -44,6 +44,7 @@ export class JX1GameEntry extends Component {
 
         const accountFlow = canvasNode.addComponent(AuthFlowController);
         accountFlow.apiBaseUrl = this.apiBaseUrl;
+        accountFlow.onEnterGame = (api, character) => mapScene.connectOnline(api, character.id);
 
         console.info('[JX1] Map prototype and account/character flow initialized.');
     }
