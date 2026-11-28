@@ -51,6 +51,63 @@ export interface ApiCharacterStats {
     spent_points: number;
 }
 
+export interface WorldCharacter {
+    id: number;
+    name: string;
+    class_name: string;
+    level: number;
+    x: number;
+    y: number;
+    hp: number;
+    max_hp: number;
+}
+
+export interface WorldMonster {
+    id: number;
+    monster_id: number;
+    name: string;
+    level: number;
+    x: number;
+    y: number;
+    hp: number;
+    max_hp: number;
+    respawn_at: number;
+    version: number;
+}
+
+export interface WorldSnapshot {
+    map_id: string;
+    server_time: number;
+    character: WorldCharacter;
+    players: WorldCharacter[];
+    monsters: WorldMonster[];
+}
+
+export interface WorldMoveResult {
+    moved: boolean;
+    map_id: string;
+    x: number;
+    y: number;
+}
+
+export interface WorldAttackResult {
+    success: boolean;
+    monster_id: number;
+    monster_name: string;
+    damage: number;
+    monster_hp: number;
+    monster_max_hp: number;
+    monster_version: number;
+    defeated: boolean;
+    monster_damage: number;
+    character_hp: number;
+    character_max_hp: number;
+    character_dead: boolean;
+    exp_gained: number;
+    current_exp: number;
+    level: number;
+}
+
 export interface ApiResult<T> {
     ok: boolean;
     status: number;
@@ -150,6 +207,25 @@ export class GameApi {
         });
     }
 
+    getWorldSnapshot(characterId: number): Promise<ApiResult<WorldSnapshot>> {
+        return this.request('/api/world/snapshot?character_id=' + encodeURIComponent(String(characterId)), 'GET');
+    }
+
+    moveWorldCharacter(characterId: number, dx: number, dy: number): Promise<ApiResult<WorldMoveResult>> {
+        return this.request('/api/world/move', 'POST', {
+            character_id: characterId,
+            dx,
+            dy
+        });
+    }
+
+    attackWorldMonster(characterId: number, monsterId: number): Promise<ApiResult<WorldAttackResult>> {
+        return this.request('/api/world/attack', 'POST', {
+            character_id: characterId,
+            monster_id: monsterId
+        });
+    }
+
     reviveCharacter(characterId: number): Promise<ApiResult<Record<string, unknown>>> {
         return this.request('/api/characters/revive', 'POST', {
             character_id: characterId
@@ -178,6 +254,14 @@ export class GameApi {
                 ok: false,
                 status: 0,
                 error: 'Chưa cấu hình địa chỉ server.'
+            });
+        }
+        const localHttp = /^http:\/\/(localhost|127\.0\.0\.1)(:\\d+)?$/i.test(this.baseUrl);
+        if (!/^https:\/\//i.test(this.baseUrl) && !localHttp) {
+            return Promise.resolve({
+                ok: false,
+                status: 0,
+                error: 'Kết nối từ xa bắt buộc dùng HTTPS. HTTP chỉ được phép với localhost khi phát triển.'
             });
         }
         if (authenticated && !this.token) {
