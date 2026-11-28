@@ -255,7 +255,7 @@ func worldMoveHandler(db *sql.DB) http.HandlerFunc {
 			WHERE c.map_id=? AND c.pos_x=? AND c.pos_y=? AND c.id<>? AND p.last_seen_at>?`,mapID,nx,ny,req.CharacterID,time.Now().Unix()-20).Scan(&occupied)
 		if err!=nil { respond(w,500,map[string]string{"error":"Không kiểm tra được vị trí người chơi"}); return }
 		if occupied>0 { respond(w,409,map[string]string{"error":"Vị trí đang có người chơi khác"}); return }
-		result,err:=tx.Exec("UPDATE characters SET pos_x=?,pos_y=?,last_move_at=? WHERE id=? AND user_id=? AND last_move_at=?",nx,ny,now,req.CharacterID,userID,lastMove)
+		result,err:=tx.Exec("UPDATE characters SET map_id=?,pos_x=?,pos_y=?,last_move_at=? WHERE id=? AND user_id=? AND last_move_at=?",mapID,nx,ny,now,req.CharacterID,userID,lastMove)
 		if err!=nil { respond(w,500,map[string]string{"error":"Không lưu được vị trí"}); return }
 		affected,_:=result.RowsAffected(); if affected!=1 { respond(w,409,map[string]string{"error":"Vị trí vừa thay đổi, hãy đồng bộ lại"}); return }
 		_,err=tx.Exec(`INSERT INTO world_presence(character_id,user_id,last_seen_at) VALUES(?,?,?)
