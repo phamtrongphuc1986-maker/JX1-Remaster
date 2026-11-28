@@ -48,3 +48,24 @@ func TestClassListRequiresGET(t *testing.T) {
     classList(rec, req)
     if rec.Code != http.StatusMethodNotAllowed { t.Fatalf("status = %d, want 405", rec.Code) }
 }
+
+func TestClassListReturnsTenClasses(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/classes", nil)
+	rec := httptest.NewRecorder()
+	classList(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `"count":10`) {
+		t.Fatalf("response does not report 10 classes: %s", rec.Body.String())
+	}
+}
+
+func TestListCharactersRejectsNonGETBeforeAuthentication(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/characters", nil)
+	rec := httptest.NewRecorder()
+	listCharacters(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want 405", rec.Code)
+	}
+}
