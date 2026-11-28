@@ -6,15 +6,12 @@ import { GameApi, ApiClass, ApiCharacter } from './network/GameApi';
 
 const { ccclass, property } = _decorator;
 
-type Screen = 'login' | 'classes' | 'create' | 'characters' | 'game';
-
 @ccclass('AuthFlowController')
 export class AuthFlowController extends Component {
     @property({ tooltip: 'URL API HTTPS của server. Để trống cho đến khi có máy chủ staging an toàn.' })
     apiBaseUrl = '';
 
     private api!: GameApi;
-    private screen: Screen = 'login';
     private username = '';
     private password = '';
     private characterName = '';
@@ -148,7 +145,6 @@ export class AuthFlowController extends Component {
     }
 
     private renderLogin(): void {
-        this.screen = 'login';
         const panel = this.clearScreen('Đăng nhập tài khoản', 'Đăng nhập để quản lý nhân vật trên máy chủ');
         const width = this.panelWidth - 48;
         const user = this.addInput(panel, 'Tên tài khoản (4-24 ký tự)', 0, 92, width, this.username);
@@ -221,7 +217,6 @@ export class AuthFlowController extends Component {
     }
 
     private renderClasses(): void {
-        this.screen = 'classes';
         const panel = this.clearScreen('Chọn môn phái', 'Chọn một trong mười môn phái để tạo nhân vật');
         const gap = 8;
         const colWidth = (this.panelWidth - 52) / 2;
@@ -239,7 +234,6 @@ export class AuthFlowController extends Component {
     }
 
     private renderCreateCharacter(): void {
-        this.screen = 'create';
         const panel = this.clearScreen('Tạo nhân vật', 'Môn phái: ' + (this.selectedClass?.name || 'Chưa chọn'));
         const width = this.panelWidth - 48;
         const name = this.addInput(panel, 'Tên nhân vật (2-16 ký tự)', 0, 68, width, this.characterName);
@@ -272,7 +266,6 @@ export class AuthFlowController extends Component {
     }
 
     private renderCharacters(): void {
-        this.screen = 'characters';
         const panel = this.clearScreen('Chọn nhân vật', 'Chọn nhân vật để vào bản đồ');
         const listTop = this.panelHeight / 2 - 160;
         if (!this.selectedCharacter && this.characters.length > 0) this.selectedCharacter = this.characters[0];
@@ -297,7 +290,6 @@ export class AuthFlowController extends Component {
             this.setStatus('Hãy chọn một nhân vật.');
             return;
         }
-        this.screen = 'game';
         const character = this.selectedCharacter;
         const panel = this.clearScreen('Đã chọn nhân vật', 'Kết nối REST thành công • Bản đồ đang ở chế độ thử nghiệm');
         this.addLabel(panel, character.name, 0, 72, this.panelWidth - 40, 42, 25, new Color(235, 194, 112));
