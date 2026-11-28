@@ -117,14 +117,20 @@ func inventoryHandler(db *sql.DB) http.HandlerFunc {
 		items := []Item{}
 		for rows.Next() {
 			var item Item
-			if rows.Scan(
+			if err := rows.Scan(
 				&item.ID,
 				&item.Name,
 				&item.Description,
 				&item.Quantity,
-			) == nil {
-				items = append(items, item)
+			); err != nil {
+				http.Error(w, "Lỗi đọc dữ liệu túi đồ", http.StatusInternalServerError)
+				return
 			}
+			items = append(items, item)
+		}
+		if err := rows.Err(); err != nil {
+			http.Error(w, "Lỗi đọc dữ liệu túi đồ", http.StatusInternalServerError)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -146,7 +152,7 @@ func useItemHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var req ItemRequest
-		if json.NewDecoder(r.Body).Decode(&req) != nil ||
+		if !decode(w, r, &req) ||
 			req.CharacterID <= 0 || req.ItemID <= 0 {
 			http.Error(w, "Dữ liệu không hợp lệ", 400)
 			return
@@ -206,7 +212,7 @@ func useItemHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		_, err = tx.Exec(`
+		result, err := tx.Exec(`
 			UPDATE character_items
 			SET quantity=quantity-1
 			WHERE character_id=? AND item_id=? AND quantity>0
@@ -214,6 +220,10 @@ func useItemHandler(db *sql.DB) http.HandlerFunc {
 
 		if err != nil {
 			http.Error(w, "Không thể trừ vật phẩm", 500)
+			return
+		}
+		if affected, rowsErr := result.RowsAffected(); rowsErr != nil || affected != 1 {
+			http.Error(w, "Số lượng vật phẩm đã thay đổi, vui lòng thử lại", 409)
 			return
 		}
 
