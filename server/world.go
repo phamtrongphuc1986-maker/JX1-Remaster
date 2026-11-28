@@ -241,7 +241,11 @@ func worldMoveHandler(db *sql.DB) http.HandlerFunc {
 		if r.Method!=http.MethodPost { respond(w,405,map[string]string{"error":"Chỉ hỗ trợ POST"}); return }
 		userID,err:=authenticate(r); if err!=nil { respond(w,401,map[string]string{"error":err.Error()}); return }
 		var req struct { CharacterID int64 `json:"character_id"`; DX int `json:"dx"`; DY int `json:"dy"` }
-		if !decode(w,r,&req) || req.CharacterID<=0 || absInt(req.DX)>1 || absInt(req.DY)>1 || (req.DX==0 && req.DY==0) { respond(w,400,map[string]string{"error":"Bước di chuyển không hợp lệ"}); return }
+		if !decode(w,r,&req) { return }
+		if req.CharacterID<=0 || absInt(req.DX)>1 || absInt(req.DY)>1 || (req.DX==0 && req.DY==0) {
+			respond(w,400,map[string]string{"error":"Bước di chuyển không hợp lệ"})
+			return
+		}
 		tx,err:=db.Begin(); if err!=nil { respond(w,500,map[string]string{"error":"Không mở được giao dịch"}); return }; defer tx.Rollback()
 		var mapID string; var x,y,currentHP int; var lastMove int64
 		err=tx.QueryRow("SELECT c.map_id,c.pos_x,c.pos_y,c.last_move_at,s.current_hp FROM characters c JOIN character_stats s ON s.character_id=c.id WHERE c.id=? AND c.user_id=?",req.CharacterID,userID).Scan(&mapID,&x,&y,&lastMove,&currentHP)
@@ -271,14 +275,29 @@ func worldMoveHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+type worldRuleError struct { message string }
+func (e worldRuleError) Error() string { return e.message }
+
 func worldAttackHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter,r *http.Request) {
 		if r.Method!=http.MethodPost { respond(w,405,map[string]string{"error":"Chỉ hỗ trợ POST"}); return }
 		userID,err:=authenticate(r); if err!=nil { respond(w,401,map[string]string{"error":err.Error()}); return }
 		var req struct { CharacterID int64 `json:"character_id"`; MonsterID int64 `json:"monster_id"` }
-		if !decode(w,r,&req) || req.CharacterID<=0 || req.MonsterID<=0 { respond(w,400,map[string]string{"error":"Dữ liệu tấn công không hợp lệ"}); return }
+		if !decode(w,r,&req) { return }
+		if req.CharacterID<=0 || req.MonsterID<=0 {
+			respond(w,400,map[string]string{"error":"Dữ liệu tấn công không hợp lệ"})
+			return
+		}
 		result,err:=performWorldAttack(db,userID,req.CharacterID,req.MonsterID)
-		if err!=nil { respond(w,409,map[string]string{"error":err.Error()}); return }
+		if err!=nil {
+			var ruleErr worldRuleError
+			if errors.As(err,&ruleErr) {
+				respond(w,409,map[string]string{"error":ruleErr.Error()})
+			} else {
+				respond(w,500,map[string]string{"error":"Lỗi máy chủ khi xử lý chiến đấu"})
+			}
+			return
+		}
 		respond(w,200,result)
 	}
 }
@@ -289,23 +308,23 @@ func performWorldAttack(db *sql.DB,userID,characterID,worldMonsterID int64)(map[
 	err=tx.QueryRow(`SELECT c.level,c.exp,c.map_id,c.pos_x,c.pos_y,s.attack,s.defense,s.current_hp,s.hp,s.last_world_attack_at
 		FROM characters c JOIN character_stats s ON s.character_id=c.id WHERE c.id=? AND c.user_id=?`,characterID,userID).
 		Scan(&level,&exp,&mapID,&x,&y,&attack,&defense,&currentHP,&maxHP,&lastAttack)
-	if err!=nil{return nil,errors.New("Không tìm thấy nhân vật hoặc không có quyền")}
-	if currentHP<=0{return nil,errors.New("Nhân vật đã tử trận, cần hồi sinh")}
-	nowMS:=time.Now().UnixMilli(); if nowMS-lastAttack<450{return nil,errors.New("Hãy chờ hồi chiêu trước khi đánh tiếp")}
+	if err!=nil{return nil,worldRuleError{message:"Không tìm thấy nhân vật hoặc không có quyền"}}
+	if currentHP<=0{return nil,worldRuleError{message:"Nhân vật đã tử trận, cần hồi sinh"}}
+	nowMS:=time.Now().UnixMilli(); if nowMS-lastAttack<450{return nil,worldRuleError{message:"Hãy chờ hồi chiêu trước khi đánh tiếp"}}
 	var monster worldMonsterView
 	err=tx.QueryRow(`SELECT wm.id,m.id,m.name,m.level,wm.x,wm.y,wm.hp,m.max_hp,wm.respawn_at,wm.version
 		FROM world_monsters wm JOIN monsters m ON m.id=wm.monster_id
 		WHERE wm.id=? AND wm.map_id=?`,worldMonsterID,mapID).
 		Scan(&monster.ID,&monster.MonsterID,&monster.Name,&monster.Level,&monster.X,&monster.Y,&monster.HP,&monster.MaxHP,&monster.RespawnAt,&monster.Version)
-	if err!=nil{return nil,errors.New("Không tìm thấy quái vật trong bản đồ hiện tại")}
+	if err!=nil{return nil,worldRuleError{message:"Không tìm thấy quái vật trong bản đồ hiện tại"}}
 	if monster.HP<=0 {
-		if monster.RespawnAt>time.Now().Unix(){return nil,errors.New("Quái vật đang hồi sinh")}
+		if monster.RespawnAt>time.Now().Unix(){return nil,worldRuleError{message:"Quái vật đang hồi sinh"}}
 		monster.HP=monster.MaxHP
 		monster.RespawnAt=0
 		monster.Version++
 		if _,err=tx.Exec("UPDATE world_monsters SET hp=?,respawn_at=0,version=? WHERE id=? AND hp<=0",monster.HP,monster.Version,worldMonsterID);err!=nil{return nil,err}
 	}
-	if maxInt(absInt(x-monster.X),absInt(y-monster.Y))>1{return nil,errors.New("Quái vật ở quá xa")}
+	if maxInt(absInt(x-monster.X),absInt(y-monster.Y))>1{return nil,worldRuleError{message:"Quái vật ở quá xa"}}
 	damage:=attack
 	if damage<1{damage=1}
 	damage-=monsterDefense(monster.MonsterID)
