@@ -28,81 +28,111 @@ jobs:
         run: |
           $url = 'https://download.cocos.com/CocosCreator/v3.8.0/CocosCreator-v3.8.0-win-072014.zip'
           $archive = Join-Path $env:RUNNER_TEMP 'cocos-creator-3.8.0.zip'
-          Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
           $install = Join-Path $env:RUNNER_TEMP 'cocos-creator-3.8.0'
+          Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
           New-Item -ItemType Directory -Force -Path $install | Out-Null
           Expand-Archive -Path $archive -DestinationPath $install -Force
-          $creator = Get-ChildItem -Path $install -Filter 'CocosCreator.exe' -Recurse |
-            Select-Object -First 1
+          $creator = Get-ChildItem -Path $install -Filter 'CocosCreator.exe' -Recurse | Select-Object -First 1
           if (-not $creator) { throw 'CocosCreator.exe not found in official archive.' }
+          if (-not (Test-Path -LiteralPath $creator.FullName -PathType Leaf)) { throw "Creator executable does not exist: $($creator.FullName)" }
+          $file = Get-Item -LiteralPath $creator.FullName
+          Write-Host "Creator executable: $($file.FullName)"
+          Write-Host "Creator file size: $($file.Length)"
+          Write-Host "Creator file version: $((Get-Item $creator.FullName).VersionInfo.FileVersion)"
           "COCOS_CREATOR_EXE=$($creator.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Build Web Mobile to verify scene import and TypeScript compilation
+      - name: Diagnose Creator startup, warm up editor, and build Web Mobile
         shell: pwsh
+        env:
+          ELECTRON_ENABLE_LOGGING: '1'
+          ELECTRON_ENABLE_STACK_DUMPING: '1'
         run: |
+          $ErrorActionPreference = 'Stop'
           $project = Join-Path $env:GITHUB_WORKSPACE 'client/cocos'
           $buildRoot = Join-Path $project 'build'
-          if (Test-Path $buildRoot) {
-            Remove-Item -Path $buildRoot -Recurse -Force
-          }
+          $diag = Join-Path $env:RUNNER_TEMP 'cocos-diagnostics'
+          New-Item -ItemType Directory -Force -Path $diag | Out-Null
+          if (-not (Test-Path -LiteralPath $env:COCOS_CREATOR_EXE -PathType Leaf)) { throw "COCOS_CREATOR_EXE does not point to a file: $env:COCOS_CREATOR_EXE" }
 
-          # The archived successful Creator 3.8.0 run confirms project://build
-          # is accepted and produces build/jx1m-ci-web-mobile. Keep the path
-          # project-relative; an absolute D:\ path caused Creator to exit -1
-          # before it emitted any builder logs in the subsequent runs.
+          Write-Host '=== Runner session diagnostics ==='
+          Write-Host "Identity: $([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
+          Write-Host "USERPROFILE: $env:USERPROFILE"
+          Write-Host "APPDATA: $env:APPDATA"
+          Write-Host "LOCALAPPDATA: $env:LOCALAPPDATA"
+          Write-Host "SESSIONNAME: $env:SESSIONNAME"
+          Write-Host "Explorer process present: $([bool](Get-Process explorer -ErrorAction SilentlyContinue))"
+          cmd /c "query session" 2>&1 | Tee-Object -FilePath (Join-Path $diag 'session.txt')
+
           $buildArgs = 'platform=web-mobile;debug=true;buildPath=project://build;outputName=jx1m-ci-web-mobile;'
-          $arguments = "--project `"$project`" --build `"$buildArgs`" --disable-gpu"
-          $process = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList $arguments -Wait -PassThru
-          $code = $process.ExitCode
-          "Cocos Creator process exit code: $code"
+          $buildArgumentLine = "--project `"$project`" --build `"$buildArgs`" --disable-gpu"
+          Write-Host '=== Exact Creator executable and build command ==='
+          Write-Host "EXE: $env:COCOS_CREATOR_EXE"
+          Write-Host "ARGS: $buildArgumentLine"
+          Write-Host "WORKING DIRECTORY: $project"
 
-          if ($code -ne 36) {
-            $logDir = Join-Path $project 'temp/builder/log'
-            if (Test-Path $logDir) {
-              Get-ChildItem $logDir -Recurse -File | ForEach-Object {
-                Write-Host "---- $($_.FullName) ----"
-                Get-Content $_.FullName -Tail 200
-              }
-            }
-            $editorLogRoots = @(
-              (Join-Path $env:APPDATA 'CocosCreator'),
-              (Join-Path $env:LOCALAPPDATA 'CocosCreator'),
-              (Join-Path $env:USERPROFILE '.CocosCreator')
-            )
-            foreach ($root in $editorLogRoots) {
-              if (Test-Path $root) {
-                Get-ChildItem $root -Recurse -File -ErrorAction SilentlyContinue |
-                  Where-Object { $_.Extension -in @('.log', '.txt') } |
-                  Sort-Object LastWriteTime -Descending |
-                  Select-Object -First 10 |
-                  ForEach-Object {
-                    Write-Host "---- $($_.FullName) ----"
-                    Get-Content $_.FullName -Tail 100 -ErrorAction SilentlyContinue
-                  }
-              }
-            }
-            throw "Cocos Creator build failed with exit code $code (expected 36)."
+          # First-launch warm-up: open the project without building, cap at 25 seconds.
+          $warmOut = Join-Path $diag 'creator-warmup.stdout.log'
+          $warmErr = Join-Path $diag 'creator-warmup.stderr.log'
+          Write-Host '=== Creator warm-up (maximum 25 seconds) ==='
+          $warm = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList @('--project', "`"$project`"", '--disable-gpu') -WorkingDirectory $project -PassThru -RedirectStandardOutput $warmOut -RedirectStandardError $warmErr
+          $warmExited = $warm.WaitForExit(25000)
+          if ($warmExited) {
+            Write-Host "Warm-up process exited with code: $($warm.ExitCode)"
+          } else {
+            Write-Host 'Warm-up editor stayed alive for 25 seconds; terminating warm-up process tree before build.'
+            & taskkill.exe /PID $warm.Id /T /F 2>&1 | Tee-Object -FilePath (Join-Path $diag 'warmup-taskkill.txt')
           }
+          foreach ($f in @($warmOut, $warmErr)) {
+            if (Test-Path $f) { Write-Host "---- $f ----"; Get-Content $f -Tail 200 }
+          }
+
+          if (Test-Path $buildRoot) { Remove-Item -Path $buildRoot -Recurse -Force }
+          $buildOut = Join-Path $diag 'creator-build.stdout.log'
+          $buildErr = Join-Path $diag 'creator-build.stderr.log'
+          Write-Host '=== Creator Web Mobile build ==='
+          $process = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList @('--project', "`"$project`"", '--build', "`"$buildArgs`"", '--disable-gpu') -WorkingDirectory $project -Wait -PassThru -RedirectStandardOutput $buildOut -RedirectStandardError $buildErr
+          $code = $process.ExitCode
+          Write-Host "Cocos Creator process exit code: $code"
+          foreach ($f in @($buildOut, $buildErr)) {
+            if (Test-Path $f) { Write-Host "---- $f ----"; Get-Content $f -Tail 300 }
+          }
+
+          $logRoots = @((Join-Path $env:USERPROFILE '.CocosCreator'), (Join-Path $env:APPDATA 'CocosCreator'), (Join-Path $env:LOCALAPPDATA 'CocosCreator'))
+          foreach ($root in $logRoots) {
+            if (Test-Path $root) {
+              Write-Host "=== Creator log root: $root ==="
+              $files = Get-ChildItem $root -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in @('.log', '.txt', '.json') } | Sort-Object LastWriteTime -Descending | Select-Object -First 40
+              foreach ($f in $files) {
+                $dest = Join-Path $diag ("profile-" + [guid]::NewGuid().ToString() + "-" + $f.Name)
+                Copy-Item -LiteralPath $f.FullName -Destination $dest -Force -ErrorAction SilentlyContinue
+                Write-Host "---- $($f.FullName) ----"
+                Get-Content $f.FullName -Tail 150 -ErrorAction SilentlyContinue
+              }
+            }
+          }
+
+          $builderLog = Join-Path $project 'temp/builder/log'
+          if (Test-Path $builderLog) {
+            Get-ChildItem $builderLog -Recurse -File | ForEach-Object { Write-Host "---- $($_.FullName) ----"; Get-Content $_.FullName -Tail 250 }
+          }
+          if ($code -ne 36) { throw "Cocos Creator build failed with exit code $code (expected 36). See cocos-diagnostics artifact." }
 
           $output = Join-Path $buildRoot 'jx1m-ci-web-mobile'
-          if (-not (Test-Path $output)) {
-            throw "Cocos Creator returned success but output folder is missing: $output"
-          }
-          $index = Get-ChildItem -Path $output -Filter 'index.html' -Recurse |
-            Select-Object -First 1
-          if (-not $index) {
-            throw "Cocos Creator reported success but no index.html exists under $output"
-          }
-          "Cocos Web Mobile build verified: $($index.FullName)"
+          if (-not (Test-Path $output)) { throw "Cocos Creator returned success but output folder is missing: $output" }
+          $index = Get-ChildItem -Path $output -Filter 'index.html' -Recurse | Select-Object -First 1
+          if (-not $index) { throw "Cocos Creator reported success but no index.html exists under $output" }
+          Write-Host "Cocos Web Mobile build verified: $($index.FullName)"
 
-      - name: Upload Cocos build logs
+      - name: Upload Cocos diagnostics and editor logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jx1m-cocos-editor-logs
+          name: jx1m-cocos-startup-diagnostics
           path: |
+            ${{ runner.temp }}/cocos-diagnostics/
             client/cocos/temp/builder/log/
             client/cocos/temp/
+            ${{ env.USERPROFILE }}/.CocosCreator/
           if-no-files-found: ignore
           retention-days: 7
 
