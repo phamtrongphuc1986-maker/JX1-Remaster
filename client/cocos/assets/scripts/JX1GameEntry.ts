@@ -1,4 +1,4 @@
-import { _decorator, Camera, Canvas, Color, Component, Node, UITransform, view } from 'cc';
+import { _decorator, Camera, Canvas, Color, Component, Layers, Node, UITransform, view } from 'cc';
 import { AuthFlowController } from './AuthFlowController';
 import { MapTestScene } from './MapTestScene';
 
@@ -12,6 +12,9 @@ const { ccclass, property } = _decorator;
 export class JX1GameEntry extends Component {
     @property
     orthographicHeight = 225;
+
+    @property({ tooltip: 'URL HTTPS của API staging. Để trống nếu máy chủ chưa được cấu hình an toàn.' })
+    apiBaseUrl = '';
 
     start(): void {
         const cameraNode = new Node('MainCamera');
@@ -34,11 +37,13 @@ export class JX1GameEntry extends Component {
 
         const canvasNode = new Node('Canvas');
         canvasNode.setParent(this.node);
-        canvasNode.layer = 1 << 25;
+        canvasNode.layer = Layers.Enum.UI_2D;
         canvasNode.addComponent(UITransform).setContentSize(visible.width, visible.height);
         const canvas = canvasNode.addComponent(Canvas);
         canvas.cameraComponent = camera;
-        canvasNode.addComponent(AuthFlowController);
+
+        const accountFlow = canvasNode.addComponent(AuthFlowController);
+        accountFlow.apiBaseUrl = this.apiBaseUrl;
 
         console.info('[JX1] Map prototype and account/character flow initialized.');
     }
