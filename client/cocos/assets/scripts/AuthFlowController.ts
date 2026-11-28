@@ -1,6 +1,6 @@
 import {
-    _decorator, Button, Camera, Color, Component, EditBox, Graphics,
-    Label, Node, UITransform, Vec3, view
+    _decorator, BlockInputEvents, Color, Component, EditBox, Graphics,
+    Label, Node, UITransform, view
 } from 'cc';
 import { GameApi, ApiClass, ApiCharacter } from './network/GameApi';
 
@@ -57,6 +57,7 @@ export class AuthFlowController extends Component {
         node.setPosition(x, y, 0);
         const ui = node.addComponent(UITransform);
         ui.setContentSize(width, height);
+        node.addComponent(BlockInputEvents);
         const graphics = node.addComponent(Graphics);
         graphics.fillColor = color;
         graphics.roundRect(-width / 2, -height / 2, width, height, 16);
@@ -273,7 +274,8 @@ export class AuthFlowController extends Component {
         this.screen = 'characters';
         const panel = this.clearScreen('Chọn nhân vật', 'Chọn nhân vật để vào bản đồ');
         const listTop = this.panelHeight / 2 - 160;
-        const visibleCount = Math.min(this.characters.length, 6);
+        if (!this.selectedCharacter && this.characters.length > 0) this.selectedCharacter = this.characters[0];
+        const visibleCount = Math.min(this.characters.length, 5);
         for (let i = 0; i < visibleCount; i++) {
             const character = this.characters[i];
             const selected = this.selectedCharacter?.id === character.id;
@@ -286,8 +288,7 @@ export class AuthFlowController extends Component {
         this.addButton(panel, 'VÀO GAME', 0, -this.panelHeight / 2 + 132, 210, 48, () => this.enterGame(), true);
         this.addButton(panel, 'TẠO NHÂN VẬT KHÁC', 0, -this.panelHeight / 2 + 76, 210, 42, () => this.renderClasses());
         this.addButton(panel, 'ĐĂNG XUẤT', 0, -this.panelHeight / 2 + 24, 150, 36, () => this.logout());
-        if (this.characters.length > 6) this.setStatus('Đang hiển thị 6 nhân vật đầu tiên. Cần bổ sung cuộn danh sách ở bước UI tiếp theo.');
-        if (!this.selectedCharacter && this.characters.length > 0) this.selectedCharacter = this.characters[0];
+        if (this.characters.length > 5) this.setStatus('Đang hiển thị 5 nhân vật đầu tiên. Cần bổ sung cuộn danh sách ở bước UI tiếp theo.');
     }
 
     private enterGame(): void {
