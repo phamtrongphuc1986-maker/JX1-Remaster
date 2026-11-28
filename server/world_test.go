@@ -296,3 +296,61 @@ func TestWorldMoveHandlerRejectsDeadCharacter(t *testing.T) {
 	rec,_ := callWorldMove(t,worldMoveHandler(testDB),1,0)
 	if rec.Code != http.StatusConflict { t.Fatalf("expected dead character conflict, got %d",rec.Code) }
 }
+
+func TestWorldSnapshotReturnsServerOwnedPlayersAndMonsters(t *testing.T) {
+	testDB, err := sql.Open("sqlite",":memory:")
+	if err != nil { t.Fatal(err) }
+	defer testDB.Close()
+	testDB.SetMaxOpenConns(1)
+	_,err=testDB.Exec(`
+		CREATE TABLE sessions(token TEXT PRIMARY KEY,user_id INTEGER NOT NULL,expires_at DATETIME NOT NULL);
+		CREATE TABLE characters(
+			id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,name TEXT NOT NULL,class_id INTEGER NOT NULL,
+			level INTEGER NOT NULL,exp INTEGER NOT NULL,map_id TEXT NOT NULL,pos_x INTEGER NOT NULL,pos_y INTEGER NOT NULL
+		);
+		CREATE TABLE character_stats(
+			character_id INTEGER PRIMARY KEY,current_hp INTEGER NOT NULL,hp INTEGER NOT NULL,mp INTEGER NOT NULL
+		);
+		CREATE TABLE world_presence(character_id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,last_seen_at INTEGER NOT NULL);
+		CREATE TABLE monsters(id INTEGER PRIMARY KEY,name TEXT NOT NULL,level INTEGER NOT NULL,max_hp INTEGER NOT NULL);
+		CREATE TABLE world_monsters(
+			id INTEGER PRIMARY KEY,map_id TEXT NOT NULL,monster_id INTEGER NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,
+			hp INTEGER NOT NULL,respawn_at INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 1
+		);
+		INSERT INTO sessions(token,user_id,expires_at) VALUES('test-token',10,?);
+		INSERT INTO characters(id,user_id,name,class_id,level,exp,map_id,pos_x,pos_y) VALUES
+			(1,10,'Nhân vật A',1,2,35,'map_001_village_test',9,12),
+			(2,20,'Nhân vật B',2,1,0,'map_001_village_test',10,12);
+		INSERT INTO character_stats(character_id,current_hp,hp,mp) VALUES
+			(1,80,100,50),(2,100,100,45);
+		INSERT INTO world_presence(character_id,user_id,last_seen_at) VALUES(2,20,?);
+		INSERT INTO monsters(id,name,level,max_hp) VALUES(1,'Sói Xám',1,50);
+		INSERT INTO world_monsters(id,map_id,monster_id,x,y,hp,respawn_at,version)
+			VALUES(100,'map_001_village_test',1,15,14,27,0,3);
+	`,time.Now().Add(time.Hour),time.Now().Unix())
+	if err!=nil {t.Fatal(err)}
+	oldDB:=db
+	db=testDB
+	defer func(){db=oldDB}()
+	req:=httptest.NewRequest(http.MethodGet,"/api/world/snapshot?character_id=1",nil)
+	req.Header.Set("Authorization","Bearer test-token")
+	rec:=httptest.NewRecorder()
+	worldSnapshotHandler(testDB).ServeHTTP(rec,req)
+	if rec.Code!=http.StatusOK {t.Fatalf("expected snapshot 200, got %d: %s",rec.Code,rec.Body.String())}
+	var payload struct {
+		MapID string `json:"map_id"`
+		Character worldCharacterView `json:"character"`
+		Players []worldCharacterView `json:"players"`
+		Monsters []worldMonsterView `json:"monsters"`
+	}
+	if err:=json.Unmarshal(rec.Body.Bytes(),&payload);err!=nil{t.Fatal(err)}
+	if payload.MapID!="map_001_village_test" || payload.Character.Name!="Nhân vật A" ||
+		payload.Character.ClassName!="Thiếu Lâm" || payload.Character.HP!=80 ||
+		payload.Character.MaxHP!=100 || payload.Character.Exp!=35 || payload.Character.MP!=50 {
+		t.Fatalf("unexpected authoritative character snapshot: %#v",payload.Character)
+	}
+	if len(payload.Players)!=2 {t.Fatalf("expected two online players, got %d",len(payload.Players))}
+	if len(payload.Monsters)!=1 || payload.Monsters[0].ID!=100 || payload.Monsters[0].HP!=27 {
+		t.Fatalf("unexpected shared monster snapshot: %#v",payload.Monsters)
+	}
+}
