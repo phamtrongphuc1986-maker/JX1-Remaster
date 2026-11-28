@@ -5,7 +5,7 @@ on:
     branches:
       - integration/jx1m-clean-monorepo
     paths:
-      - "artifacts/jx1-remaster-source.tar.gz.b64"
+      - "artifacts/jx1-source.ready"
 
 permissions:
   contents: write
@@ -25,7 +25,7 @@ jobs:
         run: |
           set -euo pipefail
           expected="3caffb850f4a1b72b71bc6e757738781f6176f45d9b0df0e8e070ecf46f63184"
-          base64 -d artifacts/jx1-remaster-source.tar.gz.b64 > /tmp/jx1-remaster-source.tar.gz
+          cat artifacts/jx1-source.part-* | base64 -d > /tmp/jx1-remaster-source.tar.gz
           echo "$expected  /tmp/jx1-remaster-source.tar.gz" | sha256sum -c -
           python3 - <<'PY'
           import tarfile
@@ -39,7 +39,7 @@ jobs:
           PY
           # Keep existing repository files; add only files not already present.
           cp -an /tmp/jx1-source/. .
-          rm -f artifacts/jx1-remaster-source.tar.gz.b64
+          rm -f artifacts/jx1-source.part-* artifacts/jx1-source.ready
           rmdir artifacts 2>/dev/null || true
 
       - name: Commit imported source
