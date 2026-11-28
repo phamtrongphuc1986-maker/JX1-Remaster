@@ -17,11 +17,14 @@ type worldSpawn struct {
 	Count     int
 }
 
+type worldPortal struct { TargetMap string; TargetX, TargetY int }
+
 type worldMapConfig struct {
 	Width, Height int
 	SpawnX, SpawnY int
 	Blocked map[gridCell]bool
 	Spawns []worldSpawn
+	Portals map[gridCell]worldPortal
 }
 
 var worldMaps = map[string]worldMapConfig{
@@ -32,6 +35,7 @@ var worldMaps = map[string]worldMapConfig{
 			{3, 13}: true, {4, 13}: true, {15, 5}: true, {16, 5}: true,
 		},
 		Spawns: []worldSpawn{{"spawn_slime_001", 1, 15, 14, 3}},
+		Portals: map[gridCell]worldPortal{{18, 10}: {"map_002_field_test", 2, 10}},
 	},
 	"map_002_field_test": {
 		Width: 20, Height: 20, SpawnX: 2, SpawnY: 10,
@@ -40,6 +44,7 @@ var worldMaps = map[string]worldMapConfig{
 			{14, 14}: true, {15, 14}: true,
 		},
 		Spawns: []worldSpawn{{"field_monsters_001", 1, 12, 12, 5}},
+		Portals: map[gridCell]worldPortal{{1, 10}: {"map_001_village_test", 18, 10}},
 	},
 }
 
@@ -233,13 +238,18 @@ func worldMoveHandler(db *sql.DB) http.HandlerFunc {
 		var req struct { CharacterID int64 `json:"character_id"`; DX int `json:"dx"`; DY int `json:"dy"` }
 		if !decode(w,r,&req) || req.CharacterID<=0 || absInt(req.DX)>1 || absInt(req.DY)>1 || (req.DX==0 && req.DY==0) { respond(w,400,map[string]string{"error":"Bước di chuyển không hợp lệ"}); return }
 		tx,err:=db.Begin(); if err!=nil { respond(w,500,map[string]string{"error":"Không mở được giao dịch"}); return }; defer tx.Rollback()
-		var mapID string; var x,y int; var lastMove int64
-		err=tx.QueryRow("SELECT map_id,pos_x,pos_y,last_move_at FROM characters WHERE id=? AND user_id=?",req.CharacterID,userID).Scan(&mapID,&x,&y,&lastMove)
+		var mapID string; var x,y,currentHP int; var lastMove int64
+		err=tx.QueryRow("SELECT c.map_id,c.pos_x,c.pos_y,c.last_move_at,s.current_hp FROM characters c JOIN character_stats s ON s.character_id=c.id WHERE c.id=? AND c.user_id=?",req.CharacterID,userID).Scan(&mapID,&x,&y,&lastMove,&currentHP)
 		if err!=nil { respond(w,404,map[string]string{"error":"Không tìm thấy nhân vật"}); return }
+		if currentHP<=0 { respond(w,409,map[string]string{"error":"Nhân vật đã tử trận, cần hồi sinh"}); return }
 		if !validWorldStep(mapID,x,y,req.DX,req.DY) { respond(w,400,map[string]string{"error":"Ô di chuyển bị chặn hoặc bước đi không hợp lệ"}); return }
 		now:=time.Now().UnixMilli()
 		if now-lastMove<140 { respond(w,429,map[string]string{"error":"Di chuyển quá nhanh, vui lòng chờ"}); return }
 		nx,ny:=x+req.DX,y+req.DY
+		if portal,ok:=worldMaps[mapID].Portals[gridCell{nx,ny}]; ok {
+			if !worldWalkable(portal.TargetMap,portal.TargetX,portal.TargetY) { respond(w,500,map[string]string{"error":"Cấu hình cổng bản đồ không hợp lệ"}); return }
+			mapID,nx,ny=portal.TargetMap,portal.TargetX,portal.TargetY
+		}
 		var occupied int
 		err=tx.QueryRow(`SELECT COUNT(*) FROM characters c JOIN world_presence p ON p.character_id=c.id
 			WHERE c.map_id=? AND c.pos_x=? AND c.pos_y=? AND c.id<>? AND p.last_seen_at>?`,mapID,nx,ny,req.CharacterID,time.Now().Unix()-20).Scan(&occupied)
