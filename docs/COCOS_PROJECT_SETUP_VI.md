@@ -13,21 +13,18 @@ Thư mục `client/cocos/` hiện có:
 
 Cocos Creator import các file trong `assets` và tự sinh metadata `.meta` trong lần mở project. Không tự viết UUID giả cho các script.
 
-## 2. Tạo scene chạy thử
+## 2. Scene Main
 
-Cocos Creator lưu scene dưới dạng asset riêng. Để tránh commit một file scene tự dựng sai schema/UUID, scene đầu tiên phải được tạo và lưu bằng Editor:
+Project đã có:
+- `assets/scenes/Main.scene`: scene asset serialized có SceneAsset, Scene root và node `JX1GameEntry`.
+- `assets/scenes/Main.scene.meta`: metadata scene.
+- `assets/scripts/JX1GameEntry.ts.meta`: UUID ổn định cho component bootstrap.
+- `tools/generate-cocos-main-scene.mjs`: generator có thể chạy lại để tái tạo scene.
+- CI kiểm tra JSON scene, các tham chiếu object và component bootstrap.
 
-1. Mở Cocos Dashboard, chọn **Open Other** (hoặc Open Project).
-2. Chọn thư mục `client/cocos` trong repository.
-3. Chờ Creator import xong các script trong `assets/scripts`.
-4. Trong Assets, nhấp phải `assets` → Create → Scene; đặt tên `Main` và lưu tại `assets/scenes/Main.scene`.
-5. Chọn node Scene gốc trong Hierarchy.
-6. Inspector → Add Component → tìm `JX1GameEntry` → thêm component.
-7. Lưu scene. Trong Build, chọn `Main.scene` làm Start Scene.
+Scene root gắn `JX1GameEntry`. Khi chạy, component tạo Camera orthographic, World node, `MapTestScene` và Canvas UI. `apiBaseUrl` phải là URL HTTPS khi kết nối server từ xa.
 
-Component `JX1GameEntry` tự tạo Camera orthographic, World node, gắn `MapTestScene` và tạo Canvas UI. Trên component này có thuộc tính `apiBaseUrl`: chỉ điền URL HTTPS staging sau khi backend đã được triển khai an toàn; để trống trong giai đoạn hiện tại. Bản đồ đầu vào là `map_001_village_test`; dữ liệu tài nguyên nằm ở `assets/resources/maps`.
-
-`AuthFlowController` tạo giao diện runtime gồm đăng nhập, đăng ký, chọn môn phái, tạo nhân vật, chọn nhân vật và màn hình xác nhận vào bản đồ. Các màn hình gọi `GameApi` cho đăng ký/đăng nhập, tải 10 môn phái, tải/tạo nhân vật. Tài khoản mới được đăng ký xong sẽ tự đăng nhập. Token chỉ lưu trong bộ nhớ. Danh sách nhân vật hiện hiển thị tối đa 5 nhân vật đầu tiên; cuộn danh sách sẽ bổ sung sau.
+**Giới hạn xác minh:** scene đã được tạo và kiểm tra cấu trúc tự động, nhưng chưa được mở/lưu lại bằng Cocos Creator Editor 3.8.0 và chưa xác nhận import runtime. Tài liệu Cocos mô tả việc tạo/lưu scene và gắn script qua Editor; cần Editor tương thích để xác nhận cuối cùng.
 
 ## 3. Kiểm tra prototype
 
@@ -36,14 +33,35 @@ Component `JX1GameEntry` tự tạo Camera orthographic, World node, gắn `MapT
 - Mở Console và xử lý mọi lỗi TypeScript/import/resource trước khi build.
 - Script hiện vẽ nhân vật/quái bằng Graphics; đây là hình khối prototype, chưa phải sprite/animation art hoàn chỉnh.
 
-## 4. Kết nối API
+## 4. Kết nối HTTPS và API thế giới
 
-Client có `assets/scripts/network/GameApi.ts`, bao gồm các endpoint REST hiện tồn tại:
-- đăng ký, đăng nhập, danh sách môn phái;
-- danh sách/tạo nhân vật, đọc và cộng thuộc tính;
-- danh sách/học/nâng kỹ năng;
-- danh sách quái, đánh quái, hồi sinh;
-- túi đồ và sử dụng vật phẩm.
+Client `GameApi.ts` hiện gọi:
+- API tài khoản, môn phái, nhân vật và thuộc tính.
+- `GET /api/world/snapshot?character_id=...`: trạng thái nhân vật, người chơi cùng bản đồ và quái vật.
+- `POST /api/world/move`: gửi một bước di chuyển; server kiểm tra ô bản đồ, vật cản, đi chéo, tốc độ và cổng bản đồ.
+- `POST /api/world/attack`: server xác định tầm đánh, sát thương, quái phản công, EXP, lên cấp và hồi sinh quái.
+
+Trong chế độ online, `MapTestScene` lấy snapshot khoảng mỗi giây, gửi di chuyển và tấn công lên server. HP quái được lưu chung theo bản đồ nên nhiều tài khoản cùng nhìn thấy cùng một trạng thái quái. Client không chạy AI quái hay tự tính kết quả đánh trong chế độ này. Kỹ năng K/L và AUTO đang tắt trong online mode cho đến khi có API kỹ năng do server xử lý.
+
+Đây là đồng bộ REST polling 1 giây cho prototype, **chưa phải WebSocket** và chưa phù hợp để khẳng định khả năng chịu tải MMORPG đông người.
+
+### Chính sách HTTPS
+
+- Server mặc định bind `127.0.0.1:8083`.
+- Nếu đặt `JX1_ADDR` thành địa chỉ public mà không cấu hình cả `JX1_TLS_CERT_FILE` và `JX1_TLS_KEY_FILE`, server từ chối khởi động.
+- Có thể giữ Go server ở localhost và đặt reverse proxy Caddy/Nginx xử lý HTTPS.
+- `JX1_ALLOWED_ORIGINS` là danh sách origin phân cách bằng dấu phẩy cho web preview; không dùng wildcard.
+- Client từ chối HTTP từ xa; chỉ cho HTTP localhost trong phát triển.
+
+Ví dụ Caddyfile khi đã có domain và DNS trỏ đúng VPS:
+
+```caddy
+game.example.com {
+    reverse_proxy 127.0.0.1:8083
+}
+```
+
+Đây chỉ là mẫu cấu hình, chưa triển khai. Chưa có domain, certificate hoặc HTTPS staging được cấp và kiểm thử. Không mở cổng hoặc chạy trên VPS production trong bước này.
 
 Ví dụ khởi tạo:
 
@@ -64,12 +82,16 @@ API client không lưu token vào localStorage và không tự gửi mật khẩ
 
 ## 5. Những phần chưa hoàn thành
 
-- File scene `Main.scene` do Editor tạo và lưu: chưa có trong Git ở thời điểm tài liệu này viết.
-- Chưa mở project trong Cocos Creator Editor để xác nhận import/compile TypeScript hoặc kiểm thử tương tác EditBox trên Android.
+- Cocos Creator Editor chưa được chạy; scene JSON và metadata mới qua kiểm tra cấu trúc trong CI. Chưa xác nhận Editor import, TypeScript compile hoặc chạy preview.
+- Chưa kiểm thử EditBox, joystick, đồng bộ hai tài khoản và chiến đấu trên Android/OPPO thật.
+- Chưa có domain, TLS certificate, reverse proxy hoặc HTTPS staging; server chưa được triển khai ra Internet.
+- Chưa có WebSocket; đồng bộ hiện tại dùng REST polling mỗi giây.
+- Kỹ năng K/L, AUTO, túi đồ và các hệ thống cũ chưa được chuyển toàn bộ sang authoritative online API.
+- Chưa có AI quái di chuyển theo server tick, NPC tương tác, bang hội, nhiệm vụ, Tống–Kim hay kiểm thử tải/anti-cheat.
 - Chưa có sprite/tileset/animation/VFX/audio có license.
-- Màn hình “Vào game” hiện chỉ xác nhận nhân vật đã chọn; chưa tải trạng thái thế giới từ server.
-- Chưa có đồng bộ realtime WebSocket; GameApi chỉ là REST client cho các API hiện có.
 - Chưa build APK/AAB hoặc cài lên OPPO.
+
+VPS Ubuntu hiện tại không có Cocos Creator Editor Linux chính thức trong gói 3.8 mà project đang nhắm tới. Vì vậy chưa thể xác nhận giao diện chạy trên OPPO chỉ bằng các bước CI Ubuntu. Cần một môi trường Windows/macOS có Creator tương thích hoặc thử nghiệm build trên Windows runner trước khi coi phần này hoàn tất.
 
 ## Tài liệu Cocos Creator 3.8
 
