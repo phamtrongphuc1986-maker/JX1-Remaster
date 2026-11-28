@@ -100,6 +100,10 @@ func initSkillDB(db *sql.DB) error {
 
 func listSkillsHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Chỉ hỗ trợ GET", http.StatusMethodNotAllowed)
+			return
+		}
 		classID, err := strconv.Atoi(r.URL.Query().Get("class_id"))
 		if err != nil || classID < 1 || classID > 10 {
 			http.Error(w, "class_id không hợp lệ", http.StatusBadRequest)
@@ -224,7 +228,7 @@ func learnSkillHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var req skillRequest
-		if json.NewDecoder(r.Body).Decode(&req) != nil ||
+		if !decode(w, r, &req) ||
 			req.CharacterID < 1 || req.SkillID < 1 {
 			http.Error(w, "Dữ liệu không hợp lệ", 400)
 			return
@@ -258,7 +262,7 @@ func upgradeSkillHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var req skillRequest
-		if json.NewDecoder(r.Body).Decode(&req) != nil ||
+		if !decode(w, r, &req) ||
 			req.CharacterID < 1 || req.SkillID < 1 {
 			http.Error(w, "Dữ liệu không hợp lệ", 400)
 			return
