@@ -11,7 +11,7 @@ Thư mục `client/cocos/` hiện có:
 - `scripts/`: bản nguồn prototype giữ nguyên để đối chiếu, không phải vị trí import chính thức của project.
 - `.gitignore`: loại trừ cache, build output, cấu hình máy cá nhân và khóa ký Android.
 
-Cocos Creator import các file trong `assets` và tự sinh metadata `.meta` trong lần mở project. Không tự viết UUID giả cho các script.
+Creator tự import các file trong `assets`. `Main.scene` và `JX1GameEntry.ts` có metadata UUID ổn định được sinh cùng scene generator; các script/tài nguyên còn lại sẽ được Creator tạo metadata khi import. Không tự thay UUID đã được scene tham chiếu.
 
 ## 2. Scene Main
 
@@ -91,7 +91,7 @@ API client không lưu token vào localStorage và không tự gửi mật khẩ
 - Chưa có sprite/tileset/animation/VFX/audio có license.
 - Chưa build APK/AAB hoặc cài lên OPPO.
 
-VPS Ubuntu hiện tại không có Cocos Creator Editor Linux chính thức trong gói 3.8 mà project đang nhắm tới. Vì vậy chưa thể xác nhận giao diện chạy trên OPPO chỉ bằng các bước CI Ubuntu. Cần một môi trường Windows/macOS có Creator tương thích hoặc thử nghiệm build trên Windows runner trước khi coi phần này hoàn tất.
+VPS hiện tại chạy Ubuntu nên chưa thể chạy trực tiếp bộ Editor Windows/macOS trong workflow. Repository đã có workflow Windows riêng để thử mở project và build Web Mobile bằng Creator 3.8.0. Workflow này cần hoàn tất thành công trước khi xác nhận import/compile; sau đó vẫn cần cài/chạy trên OPPO thật để kiểm tra cảm ứng và hiệu năng.
 
 ## Tài liệu Cocos Creator 3.8
 
