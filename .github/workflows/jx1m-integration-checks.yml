@@ -25,6 +25,14 @@ jobs:
           test -f docs/SOURCE_AUDIT_2026-11-28_VI.md
           echo "Repository documentation checks passed."
 
+      - name: Validate Cocos Creator assets
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check Cocos project manifest, imports and maps
+        run: node tools/validate-cocos-assets.mjs
+
       - name: Set up Go from server go.mod
         if: ${{ hashFiles('server/go.mod') != '' }}
         uses: actions/setup-go@v6
