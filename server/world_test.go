@@ -205,3 +205,18 @@ func TestWorldKillAwardsEXPAndRespawnServerSide(t *testing.T) {
 		t.Fatal("expected defeated monster to remain unavailable during respawn")
 	}
 }
+
+func TestWorldPortalDefinitionsAreWalkableAndConnected(t *testing.T) {
+	village := worldMaps["map_001_village_test"].Portals[gridCell{18,10}]
+	if village.TargetMap != "map_002_field_test" || village.TargetX != 2 || village.TargetY != 10 {
+		t.Fatalf("unexpected village portal destination: %#v",village)
+	}
+	field := worldMaps["map_002_field_test"].Portals[gridCell{1,10}]
+	if field.TargetMap != "map_001_village_test" || field.TargetX != 18 || field.TargetY != 10 {
+		t.Fatalf("unexpected field portal destination: %#v",field)
+	}
+	if !worldWalkable(village.TargetMap,village.TargetX,village.TargetY) ||
+		!worldWalkable(field.TargetMap,field.TargetX,field.TargetY) {
+		t.Fatal("portal destinations must be walkable")
+	}
+}
