@@ -1,0 +1,67 @@
+name: Cocos Creator Windows editor validation
+
+on:
+  push:
+    branches: [integration/jx1m-clean-monorepo]
+    paths:
+      - 'client/cocos/**'
+      - 'tools/generate-cocos-main-scene.mjs'
+      - '.github/workflows/cocos-windows-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  creator-web-mobile-build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate deterministic Main scene
+        shell: pwsh
+        run: node tools/generate-cocos-main-scene.mjs
+
+      - name: Download Cocos Creator 3.8.0 for Windows
+        shell: pwsh
+        run: |
+          $url = 'https://download.cocos.com/CocosCreator/v3.8.0/CocosCreator-v3.8.0-win-072014.zip'
+          $archive = Join-Path $env:RUNNER_TEMP 'cocos-creator-3.8.0.zip'
+          Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
+          $install = Join-Path $env:RUNNER_TEMP 'cocos-creator-3.8.0'
+          New-Item -ItemType Directory -Force -Path $install | Out-Null
+          Expand-Archive -Path $archive -DestinationPath $install -Force
+          $creator = Get-ChildItem -Path $install -Filter 'CocosCreator.exe' -Recurse |
+            Select-Object -First 1
+          if (-not $creator) { throw 'CocosCreator.exe not found in official archive.' }
+          "COCOS_CREATOR_EXE=$($creator.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build Web Mobile to verify scene import and TypeScript compilation
+        shell: pwsh
+        run: |
+          $project = Join-Path $env:GITHUB_WORKSPACE 'client/cocos'
+          $build = 'build/ci-web-mobile'
+          & "$env:COCOS_CREATOR_EXE" --project "$project" --build "platform=web-mobile;debug=true;buildPath=$build;outputName=jx1m-ci-web-mobile;"
+          $code = $LASTEXITCODE
+          if ($code -notin @(0, 36)) {
+            throw "Cocos Creator build failed with exit code $code"
+          }
+          $output = Join-Path $project $build
+          if (-not (Test-Path $output)) {
+            throw "Cocos build output directory was not created: $output"
+          }
+          $index = Get-ChildItem -Path $output -Filter 'index.html' -Recurse |
+            Select-Object -First 1
+          if (-not $index) {
+            throw 'Cocos Web Mobile build did not produce index.html.'
+          }
+          "Cocos Web Mobile build verified: $($index.FullName)"
+
+      - name: Upload Web Mobile preview build
+        uses: actions/upload-artifact@v4
+        with:
+          name: jx1m-cocos-web-mobile-preview
+          path: client/cocos/build/ci-web-mobile/
+          if-no-files-found: error
+          retention-days: 7
