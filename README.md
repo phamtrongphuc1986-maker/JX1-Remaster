@@ -41,4 +41,4 @@ go build ./...
 
 Chỉ chạy `server/scripts/smoke-test.sh` với server/database thử nghiệm, không dùng database production.
 
-Xem [báo cáo kiểm kê/tích hợp](docs/INTEGRATION_AUDIT_VI.md) và [phân tích phần client còn thiếu](docs/CLIENT_GAP_ANALYSIS_VI.md).
+Xem [báo cáo kiểm kê/tích hợp](docs/INTEGRATION_AUDIT_VI.md) và [phân tích phần client còn thiếu](docs/CLIENT_GAP_ANALYSIS_VI.md). Xem thêm [điều kiện và giới hạn build Android hiện tại](docs/ANDROID_BUILD_LIMITATIONS_VI.md).
