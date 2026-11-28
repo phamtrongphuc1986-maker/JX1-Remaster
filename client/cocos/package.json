@@ -1,0 +1,12 @@
+{
+  "name": "cuong-chien-online",
+  "uuid": "c9f38b90-6d4b-4d18-9a87-2a9a8a4f8f01",
+  "version": "1.0.0",
+  "description": "JX1 Remaster - original isometric MMORPG prototype",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "dependencies": {
+    "cc": "^3.8.0"
+  }
+}
