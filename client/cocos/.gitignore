@@ -1,0 +1,15 @@
+# Cocos Creator generated/imported files
+library/
+local/
+temp/
+build/
+profiles/
+*.log
+.DS_Store
+Thumbs.db
+
+# Android signing material and local secrets
+*.keystore
+*.jks
+.env
+.env.*
