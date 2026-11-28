@@ -70,6 +70,42 @@ if (!fs.existsSync(entryPath)) {
   }
 }
 
+const scenePath = path.join(assetsDir, 'scenes', 'Main.scene');
+const sceneMetaPath = scenePath + '.meta';
+const entryMetaPath = entryPath + '.meta';
+if (!fs.existsSync(scenePath) || !fs.existsSync(sceneMetaPath) || !fs.existsSync(entryMetaPath)) {
+  fail('Main.scene and its Cocos metadata files are required');
+} else {
+  try {
+    const scene = JSON.parse(fs.readFileSync(scenePath, 'utf8'));
+    const sceneMeta = JSON.parse(fs.readFileSync(sceneMetaPath, 'utf8'));
+    const entryMeta = JSON.parse(fs.readFileSync(entryMetaPath, 'utf8'));
+    const refs = [];
+    const visit = value => {
+      if (!value || typeof value !== 'object') return;
+      if (Object.hasOwn(value, '__id__')) refs.push(value.__id__);
+      for (const child of Object.values(value)) visit(child);
+    };
+    visit(scene);
+    if (scene[0]?.__type__ !== 'cc.SceneAsset' || scene[1]?.__type__ !== 'cc.Scene') {
+      fail('Main.scene must contain a Cocos SceneAsset and Scene root');
+    }
+    if (scene[0]?.scene?.__id__ !== 1 || scene[1]?._children?.[0]?.__id__ !== 2 ||
+        scene[2]?._components?.[0]?.__id__ !== 3 || scene[3]?.node?.__id__ !== 2) {
+      fail('Main.scene object graph does not attach JX1GameEntry to its root node');
+    }
+    if (refs.some(id => !Number.isInteger(id) || id < 0 || id >= scene.length)) {
+      fail('Main.scene contains an invalid serialized object reference');
+    }
+    if (sceneMeta.importer !== 'scene' || !sceneMeta.uuid ||
+        entryMeta.importer !== 'typescript' || !entryMeta.uuid) {
+      fail('Main.scene or JX1GameEntry metadata is incomplete');
+    }
+  } catch (error) {
+    fail('Main.scene serialization or metadata is invalid: ' + error.message);
+  }
+}
+
 const mapDir = path.join(assetsDir, 'resources', 'maps');
 const mapFiles = walk(mapDir).filter(file => file.endsWith('.json'));
 if (mapFiles.length < 2) fail('expected at least two JSON maps in assets/resources/maps');
