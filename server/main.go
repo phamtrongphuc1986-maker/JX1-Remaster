@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"crypto/tls"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -591,6 +593,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := initWorldDB(db); err != nil {
+		log.Fatal("World DB:", err)
+	}
+
 	if err := initItemDB(db); err != nil {
 		log.Fatal("Item DB:", err)
 	}
@@ -628,19 +634,37 @@ func main() {
 	mux.HandleFunc("/api/monsters", listMonstersHandler(db))
 	mux.HandleFunc("/api/combat/attack", attackMonsterHandler(db))
 	mux.HandleFunc("/api/characters/revive", reviveCharacterHandler(db))
+	mux.HandleFunc("/api/world/snapshot", worldSnapshotHandler(db))
+	mux.HandleFunc("/api/world/move", worldMoveHandler(db))
+	mux.HandleFunc("/api/world/attack", worldAttackHandler(db))
 	mux.HandleFunc("/api/inventory", inventoryHandler(db))
 	mux.HandleFunc("/api/items/use", useItemHandler(db))
 
+	addr := strings.TrimSpace(os.Getenv("JX1_ADDR"))
+	if addr == "" { addr = "127.0.0.1:8083" }
+	certFile := strings.TrimSpace(os.Getenv("JX1_TLS_CERT_FILE"))
+	keyFile := strings.TrimSpace(os.Getenv("JX1_TLS_KEY_FILE"))
+	if (certFile == "") != (keyFile == "") {
+		log.Fatal("Phải cấu hình đồng thời JX1_TLS_CERT_FILE và JX1_TLS_KEY_FILE")
+	}
+	if certFile == "" && !isLoopbackAddress(addr) {
+		log.Fatal("Từ chối bind địa chỉ public khi chưa bật TLS. Dùng reverse proxy HTTPS và giữ JX1_ADDR ở localhost, hoặc cấu hình certificate/key.")
+	}
+
 	server := &http.Server{
-		Addr:              "127.0.0.1:8083",
-		Handler:           mux,
+		Addr:              addr,
+		Handler:           secureHTTPHandler(mux),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		MaxHeaderBytes:    1 << 20,
+		TLSConfig:         &tls.Config{MinVersion: tls.VersionTLS12},
 	}
 
-	log.Println("JX1M Clean 0.4.0 starting at 127.0.0.1:8083")
+	log.Printf("JX1M Clean 0.4.0 starting at %s (TLS=%t)", addr, certFile != "")
+	if certFile != "" {
+		log.Fatal(server.ListenAndServeTLS(certFile, keyFile))
+	}
 	log.Fatal(server.ListenAndServe())
 }
