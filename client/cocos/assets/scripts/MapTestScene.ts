@@ -36,6 +36,7 @@ import {
     InventoryItemData,
     createInventoryItem
 } from './inventory/InventoryItem';
+import { GameApi, WorldSnapshot, WorldMonster } from './network/GameApi';
 
 const { ccclass, property } = _decorator;
 
