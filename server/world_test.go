@@ -149,3 +149,59 @@ func TestWorldCombatRejectsOutOfRangeAndForeignCharacter(t *testing.T) {
 		t.Fatal("expected a foreign account character to be rejected")
 	}
 }
+
+func TestWorldKillAwardsEXPAndRespawnServerSide(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil { t.Fatal(err) }
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	_, err = db.Exec(`
+		CREATE TABLE characters (
+			id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, level INTEGER NOT NULL,
+			exp INTEGER NOT NULL, map_id TEXT NOT NULL, pos_x INTEGER NOT NULL, pos_y INTEGER NOT NULL
+		);
+		CREATE TABLE character_stats (
+			character_id INTEGER PRIMARY KEY, attack INTEGER NOT NULL, defense INTEGER NOT NULL,
+			current_hp INTEGER NOT NULL, hp INTEGER NOT NULL, mp INTEGER NOT NULL,
+			last_world_attack_at INTEGER NOT NULL DEFAULT 0
+		);
+		CREATE TABLE monsters (
+			id INTEGER PRIMARY KEY, name TEXT NOT NULL, level INTEGER NOT NULL,
+			max_hp INTEGER NOT NULL, defense INTEGER NOT NULL, exp_reward INTEGER NOT NULL,
+			respawn_seconds INTEGER NOT NULL
+		);
+		CREATE TABLE world_monsters (
+			id INTEGER PRIMARY KEY, map_id TEXT NOT NULL, monster_id INTEGER NOT NULL,
+			x INTEGER NOT NULL, y INTEGER NOT NULL, hp INTEGER NOT NULL,
+			respawn_at INTEGER NOT NULL DEFAULT 0, version INTEGER NOT NULL DEFAULT 1
+		);
+		INSERT INTO characters(id,user_id,level,exp,map_id,pos_x,pos_y)
+			VALUES(1,10,1,90,'map_001_village_test',15,14);
+		INSERT INTO character_stats(character_id,attack,defense,current_hp,hp,mp)
+			VALUES(1,15,5,65,100,50);
+		INSERT INTO monsters(id,name,level,max_hp,defense,exp_reward,respawn_seconds)
+			VALUES(1,'Sói Xám',1,50,2,20,5);
+		INSERT INTO world_monsters(id,map_id,monster_id,x,y,hp,respawn_at,version)
+			VALUES(100,'map_001_village_test',1,15,14,10,0,1);
+	`)
+	if err != nil { t.Fatal(err) }
+
+	result, err := performWorldAttack(db,10,1,100)
+	if err != nil { t.Fatalf("world attack: %v",err) }
+	if result["defeated"] != true || result["exp_gained"] != 20 || result["level"] != 2 {
+		t.Fatalf("expected server-side kill, EXP and level-up, got %#v",result)
+	}
+	var hp,currentHP,mp,level,exp,monsterHP int
+	if err := db.QueryRow("SELECT hp,current_hp,mp FROM character_stats WHERE character_id=1").Scan(&hp,&currentHP,&mp); err != nil { t.Fatal(err) }
+	if hp != 110 || currentHP != 110 || mp != 55 {
+		t.Fatalf("expected level-up stats hp/current_hp/mp 110/110/55, got %d/%d/%d",hp,currentHP,mp)
+	}
+	if err := db.QueryRow("SELECT level,exp FROM characters WHERE id=1").Scan(&level,&exp); err != nil { t.Fatal(err) }
+	if level != 2 || exp != 10 { t.Fatalf("expected level 2 and 10 remaining EXP, got %d/%d",level,exp) }
+	if err := db.QueryRow("SELECT hp FROM world_monsters WHERE id=100").Scan(&monsterHP); err != nil { t.Fatal(err) }
+	if monsterHP != 0 { t.Fatalf("expected shared monster to be dead, got hp=%d",monsterHP) }
+	if _, err := db.Exec("UPDATE character_stats SET last_world_attack_at=0 WHERE character_id=1"); err != nil { t.Fatal(err) }
+	if _, err := performWorldAttack(db,10,1,100); err == nil {
+		t.Fatal("expected defeated monster to remain unavailable during respawn")
+	}
+}
