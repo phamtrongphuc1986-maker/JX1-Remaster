@@ -1,34 +1,32 @@
-# JX1M Clean + JX1 Remaster
+# JX1 Remaster — Monorepo (nhánh integration/jx1m-clean-monorepo)
 
-Dự án MMORPG online phong cách JX1, dùng **Go** cho game server và **Cocos Creator 3.x** cho client Android.
+Đóng gói ngày 28/11/2026 từ hai nguồn chính thức của dự án:
 
-> **Trạng thái: ĐANG TÍCH HỢP — CHƯA PHẢI BẢN PHÁT HÀNH.**
-> Nhánh làm việc: `integration/jx1m-clean-monorepo`. Nhánh `main` được giữ nguyên.
+- `server/` — Source Go của JX1M Clean **0.4.0** (lấy từ /opt/jx1m-clean-v040 trên VPS,
+  đúng bản đang chạy cổng 8083): main.go, skills.go, level.go, exp.go, items.go,
+  go.mod, go.sum. Module `jx1m-clean-v040`, yêu cầu Go 1.26.
+  Không kèm database (data/game.db là dữ liệu production, không đưa vào repo).
+- `client/cocos/` — Source Cocos Creator (TypeScript) lấy từ nhánh main của chính
+  repo này, khôi phục cấu trúc thư mục gốc theo gói source 26/11/2026:
+  scripts/ (gốc + character/ + combat/ + inventory/), assets/resources/maps/,
+  data/maps/. Nội dung theo bản mới nhất trên main (gồm TeleportationSystem.ts
+  và MapTestScene.ts bản C4.14.5).
 
-## Kiến trúc mục tiêu
+## Kiểm tra server
 
-- `server/`: Go API, xác thực, nhân vật, môn phái, thuộc tính, EXP, kỹ năng, quái, vật phẩm, nhiệm vụ và thế giới.
-- `client/cocos/`: project Cocos Creator hoàn chỉnh, giao diện, bản đồ isometric, điều khiển nhân vật, hiệu ứng và kết nối API.
-- `database/`: schema và migration; không commit database người chơi.
-- `deployment/`: cấu hình triển khai VPS Ubuntu, reverse proxy HTTPS và service.
-- `tests/`: unit, integration, API smoke và kiểm thử gameplay.
-- `android/`: cấu hình build APK/AAB ARM64 và hướng dẫn cài OPPO.
+```sh
+cd server
+gofmt -l .
+go vet ./...
+go test ./...
+go build ./...
+```
 
-## Nguồn đang được bảo toàn
+Smoke test chỉ chạy trên database thử nghiệm riêng (thư mục chạy tạm sẽ tự tạo
+data/game.db mới), không dùng chung database production.
 
-- Client prototype và dữ liệu bản đồ hiện có trong repository.
-- Server Go JX1M Clean 0.4.0 từ gói source do chủ dự án cung cấp; đang được kiểm kê trước khi đưa vào cấu trúc chuẩn.
-- Không lấy mã/tài nguyên độc quyền từ game bên thứ ba.
+## Lưu ý
 
-## Nguyên tắc an toàn
-
-1. Không sửa hoặc xóa `main` trong giai đoạn tích hợp.
-2. Không ghi đè thư mục server đang chạy trên VPS.
-3. Không commit token, mật khẩu, khóa riêng, file SQLite hoặc log có dữ liệu nhạy cảm.
-4. Chỉ dùng tài nguyên tự tạo hoặc có giấy phép sử dụng phù hợp.
-5. Không dùng dịch vụ trả phí khi chưa có đồng ý.
-6. Chỉ coi APK hoàn thành sau khi build thành công, cài đặt và kiểm thử trên thiết bị thật.
-
-## Trạng thái và kế hoạch
-
-Xem [báo cáo kiểm kê/tích hợp](docs/INTEGRATION_AUDIT_VI.md).
+- Nhánh này chỉ để tích hợp; không sửa nhánh main.
+- File "Gói JX1 Remaster Phase A V2.zip" ở thư mục gốc của main không đưa vào
+  (file nhị phân, nội dung trùng với source Phase A đã có trong client/cocos/).
