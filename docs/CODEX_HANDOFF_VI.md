@@ -16,7 +16,7 @@ Tài liệu này dùng khi Codex có quyền truy cập workspace đã clone rep
 >
 > Tìm file `JX1M-Clean-Source-Import.tar.gz` do người dùng cung cấp. Xác minh SHA-256 đúng bằng `21e2f6d6df85fbc9e6932fc35772890db7a00e407d5b4f287c806a5cbc9761d6`. Nếu sai hoặc không tìm thấy thì dừng và báo rõ.
 >
-> Giải nén vào thư mục tạm, kiểm tra danh sách trước khi copy. Nhập các tệp `*.go`, `go.mod`, `go.sum` vào `server/`; nhập `scripts/` vào `server/scripts/`; nhập `client-cocos/` vào `client/cocos/`. Giữ nguyên README hiện có; lưu README từ gói nhập với tên `UPSTREAM_README_VI.md` để tránh ghi đè.
+> Ưu tiên dùng helper `tools/import-jx1m-source.sh` đã có trong repository. Chạy `bash tools/import-jx1m-source.sh /duong-dan/JX1M-Clean-Source-Import.tar.gz`. Script xác minh SHA-256, bắt buộc đúng branch tích hợp, từ chối ghi đè source đã có, kiểm tra đường dẫn archive, bỏ qua database/log/binary và nhập source vào `server/` cùng `client/cocos/`. Script không khởi động server và không chạm dữ liệu production. Nếu helper báo lỗi, dừng và đọc lỗi; không tự ý xóa thư mục đích.
 >
 > TUYỆT ĐỐI không nhập thư mục `data/`, SQLite database/WAL/SHM, log, APK hoặc secret. Không dùng database từ máy chủ cũ. Không thay đổi cấu hình production.
 >
