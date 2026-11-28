@@ -203,7 +203,12 @@ private monsterAttackTimers: Map<MonsterController, number> = new Map();
         this.characterController.data.maxHp = character.max_hp;
         this.characterController.data.mp = character.mp;
         this.characterController.data.maxMp = character.max_mp;
-        this.playerDead = character.hp <= 0;
+        const wasDead = this.playerDead;
+        this.playerDead = false;
+        if (character.hp <= 0) {
+            if (!wasDead) this.handlePlayerDeath();
+            else this.playerDead = true;
+        }
 
         this.removeLayer('GroundTiles');
         this.removeLayer('ObstacleTiles');
