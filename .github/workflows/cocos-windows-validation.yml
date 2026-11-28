@@ -52,70 +52,52 @@ jobs:
           $buildRoot = Join-Path $project 'build'
           $diag = Join-Path $env:RUNNER_TEMP 'cocos-diagnostics'
           New-Item -ItemType Directory -Force -Path $diag | Out-Null
-          if (-not (Test-Path -LiteralPath $env:COCOS_CREATOR_EXE -PathType Leaf)) { throw "COCOS_CREATOR_EXE does not point to a file: $env:COCOS_CREATOR_EXE" }
-
-          Write-Host '=== Runner diagnostics ==='
-          Write-Host "Identity: $([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
-          Write-Host "Creator: $env:COCOS_CREATOR_EXE"
-          Write-Host "Project: $project"
-          Write-Host "SESSIONNAME: $env:SESSIONNAME"
-          Write-Host "Explorer process present: $([bool](Get-Process explorer -ErrorAction SilentlyContinue))"
-          cmd /c "query session" 2>&1 | Tee-Object -FilePath (Join-Path $diag 'session.txt')
-
-          # The saved Builder profile is committed at profiles/v2/packages/builder.json.
-          # Skip GUI warm-up: it is unrelated to CLI build and previously raised a GUI checkLayout exception.
-          $buildArgs = 'platform=web-mobile;debug=true;buildPath=project://build;outputName=jx1m-ci-web-mobile;'
-          Write-Host '=== Cocos Creator CLI build ==='
-          Write-Host "Project: $project"
-          Write-Host "Build options: $buildArgs"
-          if (Test-Path $buildRoot) { Remove-Item -Path $buildRoot -Recurse -Force }
-          $buildOut = Join-Path $diag 'creator-build-combined.log'
-
-          Push-Location $project
+          $transcript = Join-Path $diag 'powershell-transcript.txt'
+          Start-Transcript -Path $transcript -Force
           try {
-            & $env:COCOS_CREATOR_EXE --project $project --build $buildArgs --disable-gpu 2>&1 | Tee-Object -FilePath $buildOut
-            $code = $LASTEXITCODE
-          } finally {
-            Pop-Location
-          }
-          Write-Host "Cocos Creator process exit code: $code"
-
-          $logRoots = @((Join-Path $env:USERPROFILE '.CocosCreator'), (Join-Path $env:APPDATA 'CocosCreator'), (Join-Path $env:LOCALAPPDATA 'CocosCreator'))
-          foreach ($root in $logRoots) {
-            if (Test-Path $root) {
-              Write-Host "=== Creator log root: $root ==="
-              $files = Get-ChildItem $root -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in @('.log', '.txt', '.json') } | Sort-Object LastWriteTime -Descending | Select-Object -First 40
-              foreach ($f in $files) {
-                $dest = Join-Path $diag ("profile-" + [guid]::NewGuid().ToString() + "-" + $f.Name)
-                Copy-Item -LiteralPath $f.FullName -Destination $dest -Force -ErrorAction SilentlyContinue
-                Write-Host "---- $($f.FullName) ----"
-                Get-Content $f.FullName -Tail 150 -ErrorAction SilentlyContinue
-              }
+            if (-not (Test-Path -LiteralPath $env:COCOS_CREATOR_EXE -PathType Leaf)) { throw "COCOS_CREATOR_EXE missing: $env:COCOS_CREATOR_EXE" }
+            $exe = Get-Item -LiteralPath $env:COCOS_CREATOR_EXE
+            Write-Host "Creator executable: $($exe.FullName); bytes=$($exe.Length); version=$($exe.VersionInfo.FileVersion)"
+            Write-Host "Runner identity: $([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
+            Write-Host "Explorer present: $([bool](Get-Process explorer -ErrorAction SilentlyContinue))"
+            cmd /c 'query session' 2>&1 | Tee-Object -FilePath (Join-Path $diag 'session.txt')
+            $appRoot = Split-Path -Parent $env:COCOS_CREATOR_EXE
+            Get-ChildItem -LiteralPath $appRoot -Force | Select-Object Mode,Length,Name | Format-Table -AutoSize | Out-String | Write-Host
+            $versionOut = Join-Path $diag 'creator-version.stdout.txt'
+            $versionErr = Join-Path $diag 'creator-version.stderr.txt'
+            $versionProc = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList @('--version') -WorkingDirectory $project -PassThru -Wait -RedirectStandardOutput $versionOut -RedirectStandardError $versionErr
+            Write-Host "Creator --version exit code: $($versionProc.ExitCode)"
+            if (Test-Path $versionOut) { Get-Content $versionOut -Raw | Write-Host }
+            if (Test-Path $versionErr) { Get-Content $versionErr -Raw | Write-Host }
+            if (Test-Path $buildRoot) { Remove-Item -LiteralPath $buildRoot -Recurse -Force }
+            $stdout = Join-Path $diag 'creator-build.stdout.txt'
+            $stderr = Join-Path $diag 'creator-build.stderr.txt'
+            $builderLog = Join-Path $diag 'creator-builder.log'
+            $args = @('--project', ('"' + $project + '"'), '--build', ('"platform=web-mobile;debug=true;buildPath=project://build;outputName=jx1m-ci-web-mobile;logDest=' + $builderLog + ';"'))
+            Write-Host "Starting Cocos CLI with args: $($args -join ' ')"
+            $started = Get-Date
+            $proc = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList $args -WorkingDirectory $project -PassThru -Wait -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+            $elapsed = (Get-Date) - $started
+            Write-Host "Cocos Creator exit code: $($proc.ExitCode); elapsed seconds: $([math]::Round($elapsed.TotalSeconds,2))"
+            foreach ($f in @($stdout,$stderr,$builderLog)) { if (Test-Path $f) { Write-Host "=== $f ==="; Get-Content $f -Tail 300 } else { Write-Host "Not created: $f" } }
+            $eventStart = (Get-Date).AddMinutes(-15)
+            foreach ($logName in @('Application','System')) {
+              try {
+                $events = Get-WinEvent -FilterHashtable @{LogName=$logName;StartTime=$eventStart;Level=1,2} -ErrorAction Stop | Where-Object { $_.Message -match 'CocosCreator|Electron|Faulting application|Application Error|Windows Error Reporting' } | Select-Object -First 30
+                $events | ForEach-Object { "[$logName][$($_.TimeCreated)] $($_.ProviderName) EventId=$($_.Id)`n$($_.Message)`n" | Add-Content -Path (Join-Path $diag 'windows-crash-events.txt') }
+              } catch { Write-Host "Could not query $logName event log: $_" }
             }
-          }
-
-          $builderLog = Join-Path $project 'temp/builder/log'
-          if (Test-Path $builderLog) {
-            $builderDiag = Join-Path $diag 'builder-log'
-            New-Item -ItemType Directory -Force -Path $builderDiag | Out-Null
-            Get-ChildItem $builderLog -Recurse -File | ForEach-Object {
-              $relative = $_.FullName.Substring($builderLog.Length).TrimStart('\')
-              $destination = Join-Path $builderDiag $relative
-              $destinationDir = Split-Path -Parent $destination
-              New-Item -ItemType Directory -Force -Path $destinationDir | Out-Null
-              Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
-              Write-Host "---- $($_.FullName) ----"
-              Get-Content $_.FullName -Tail 250
-            }
-          }
-          if ($code -ne 36) { throw "Cocos Creator 3.8.0 build failed with exit code $code (expected 36). See cocos-diagnostics artifact." }
-
-          $output = Join-Path $buildRoot 'jx1m-ci-web-mobile'
-          if (-not (Test-Path $output)) { throw "Cocos Creator returned success but output folder is missing: $output" }
-          $index = Get-ChildItem -Path $output -Filter 'index.html' -Recurse | Select-Object -First 1
-          if (-not $index) { throw "Cocos Creator reported success but no index.html exists under $output" }
-          Write-Host "Cocos Web Mobile build verified: $($index.FullName)"
-
+            $crashRoots = @((Join-Path $env:LOCALAPPDATA 'CrashDumps'),(Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\WER\ReportArchive'),(Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\WER\ReportQueue'))
+            foreach ($root in $crashRoots) { if (Test-Path $root) { Get-ChildItem $root -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt $started.AddMinutes(-1) } | Select-Object -First 30 FullName,Length,LastWriteTime | Format-Table -AutoSize | Out-String | Add-Content -Path (Join-Path $diag 'crash-files.txt') } }
+            $creatorLogs = @((Join-Path $env:USERPROFILE '.CocosCreator'),(Join-Path $env:APPDATA 'CocosCreator'),(Join-Path $env:LOCALAPPDATA 'CocosCreator'))
+            foreach ($root in $creatorLogs) { if (Test-Path $root) { Get-ChildItem $root -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt $started.AddMinutes(-2) } | Sort-Object LastWriteTime -Descending | Select-Object -First 30 | ForEach-Object { $dest=Join-Path $diag ('creator-log-' + [guid]::NewGuid().ToString() + '-' + $_.Name); Copy-Item -LiteralPath $_.FullName -Destination $dest -Force -ErrorAction SilentlyContinue; Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName -Tail 150 -ErrorAction SilentlyContinue } } }
+            if ($proc.ExitCode -ne 36) { throw "Cocos Creator CLI failed with exit code $($proc.ExitCode). Review stdout, stderr, Builder log, and Windows crash events in artifact." }
+            $output = Join-Path $buildRoot 'jx1m-ci-web-mobile'
+            if (-not (Test-Path $output)) { throw "Build exit code 36 but output folder missing: $output" }
+            $index = Get-ChildItem -Path $output -Filter 'index.html' -Recurse | Select-Object -First 1
+            if (-not $index) { throw "Build exit code 36 but index.html missing under $output" }
+            Write-Host "Verified Web Mobile output: $($index.FullName)"
+          } finally { Stop-Transcript }
       - name: Upload Cocos diagnostics and editor logs
         if: always()
         uses: actions/upload-artifact@v4
