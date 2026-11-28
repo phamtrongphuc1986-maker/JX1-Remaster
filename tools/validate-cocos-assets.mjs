@@ -106,6 +106,41 @@ if (!fs.existsSync(scenePath) || !fs.existsSync(sceneMetaPath) || !fs.existsSync
   }
 }
 
+const networkPath = path.join(scriptsDir, 'network', 'GameApi.ts');
+const mapScenePath = path.join(scriptsDir, 'MapTestScene.ts');
+if (!fs.existsSync(networkPath) || !fs.existsSync(mapScenePath)) {
+  fail('GameApi.ts or MapTestScene.ts is missing');
+} else {
+  const api = fs.readFileSync(networkPath, 'utf8');
+  const mapScene = fs.readFileSync(mapScenePath, 'utf8');
+  for (const required of ['getWorldSnapshot(', 'moveWorldCharacter(', 'attackWorldMonster(', 'Kết nối từ xa bắt buộc dùng HTTPS']) {
+    if (!api.includes(required)) fail('GameApi.ts missing online API/security contract: ' + required);
+  }
+  for (const required of ['connectOnline(', 'refreshOnlineWorld(', 'moveOnlineCharacter(', 'attackOnlineNearestMonster(', 'drawOnlineMonsters(']) {
+    if (!mapScene.includes(required)) fail('MapTestScene.ts missing online world flow: ' + required);
+  }
+}
+const worldServerPath = path.join(root, 'server', 'world.go');
+const mainServerPath = path.join(root, 'server', 'main.go');
+const securityPath = path.join(root, 'server', 'http_security.go');
+for (const file of [worldServerPath, mainServerPath, securityPath]) {
+  if (!fs.existsSync(file)) fail(path.relative(root, file) + ' is missing');
+}
+if (fs.existsSync(worldServerPath) && fs.existsSync(mainServerPath) && fs.existsSync(securityPath)) {
+  const world = fs.readFileSync(worldServerPath, 'utf8');
+  const main = fs.readFileSync(mainServerPath, 'utf8');
+  const security = fs.readFileSync(securityPath, 'utf8');
+  for (const required of ['worldSnapshotHandler(', 'worldMoveHandler(', 'worldAttackHandler(', 'performWorldAttack(', 'world_monsters']) {
+    if (!world.includes(required)) fail('server/world.go missing authoritative feature: ' + required);
+  }
+  for (const route of ['/api/world/snapshot', '/api/world/move', '/api/world/attack']) {
+    if (!main.includes(route)) fail('server/main.go missing route ' + route);
+  }
+  if (!main.includes('ListenAndServeTLS') || !main.includes('isLoopbackAddress') || !security.includes('JX1_ALLOWED_ORIGINS')) {
+    fail('server TLS listener or explicit CORS allowlist policy is missing');
+  }
+}
+
 const mapDir = path.join(assetsDir, 'resources', 'maps');
 const mapFiles = walk(mapDir).filter(file => file.endsWith('.json'));
 if (mapFiles.length < 2) fail('expected at least two JSON maps in assets/resources/maps');
