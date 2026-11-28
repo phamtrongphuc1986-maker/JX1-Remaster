@@ -1,0 +1,58 @@
+name: Import JX1 Remaster source package
+
+on:
+  push:
+    branches:
+      - integration/jx1m-clean-monorepo
+    paths:
+      - "artifacts/jx1-remaster-source.tar.gz.b64"
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: integration/jx1m-clean-monorepo
+          fetch-depth: 0
+
+      - name: Verify and safely extract source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="3caffb850f4a1b72b71bc6e757738781f6176f45d9b0df0e8e070ecf46f63184"
+          echo "3caffb850f4a1b72b71bc6e757738781f6176f45d9b0df0e8e070ecf46f63184  /tmp/jx1-remaster-source.tar.gz" | sha256sum -c -
+          base64 -d artifacts/jx1-remaster-source.tar.gz.b64 > /tmp/jx1-remaster-source.tar.gz
+          echo "$expected  /tmp/jx1-remaster-source.tar.gz" | sha256sum -c -
+          python3 - <<'PY'
+          import tarfile
+          archive = "/tmp/jx1-remaster-source.tar.gz"
+          with tarfile.open(archive, "r:gz") as tf:
+              for item in tf.getmembers():
+                  name = item.name
+                  if name.startswith("/") or ".." in name.split("/"):
+                      raise SystemExit(f"Unsafe archive path: {name}")
+              tf.extractall("/tmp/jx1-source", filter="data")
+          PY
+          # Keep existing repository files; add only files not already present.
+          cp -an /tmp/jx1-source/. .
+          rm -f artifacts/jx1-remaster-source.tar.gz.b64
+          rmdir artifacts 2>/dev/null || true
+
+      - name: Commit imported source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README_BAT_DAU_VI.md server client tools
+          if git diff --cached --quiet; then
+            echo "No new source files to import."
+            exit 0
+          fi
+          git commit -m "feat: import JX1 Remaster Go and Cocos source"
+          git push origin HEAD:integration/jx1m-clean-monorepo
