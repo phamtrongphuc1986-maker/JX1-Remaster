@@ -12,6 +12,7 @@ export class AuthFlowController extends Component {
     apiBaseUrl = '';
 
     private api!: GameApi;
+    public onEnterGame: ((api: GameApi, character: ApiCharacter) => Promise<boolean>) | null = null;
     private username = '';
     private password = '';
     private characterName = '';
@@ -285,18 +286,24 @@ export class AuthFlowController extends Component {
         if (this.characters.length > 5) this.setStatus('Đang hiển thị 5 nhân vật đầu tiên. Cần bổ sung cuộn danh sách ở bước UI tiếp theo.');
     }
 
-    private enterGame(): void {
+    private async enterGame(): Promise<void> {
         if (!this.selectedCharacter) {
             this.setStatus('Hãy chọn một nhân vật.');
             return;
         }
-        const character = this.selectedCharacter;
-        const panel = this.clearScreen('Đã chọn nhân vật', 'Kết nối REST thành công • Bản đồ đang ở chế độ thử nghiệm');
-        this.addLabel(panel, character.name, 0, 72, this.panelWidth - 40, 42, 25, new Color(235, 194, 112));
-        this.addLabel(panel, character.class_name + '  •  Cấp ' + character.level, 0, 30, this.panelWidth - 40, 32, 17, Color.WHITE);
-        this.addLabel(panel, 'Nhân vật đã được chọn. Đồng bộ vị trí, quái vật và chiến đấu nhiều người chơi chưa được bật.', 0, -34, this.panelWidth - 54, 84, 13, new Color(195, 205, 215));
-        this.addButton(panel, 'CHỌN NHÂN VẬT KHÁC', 0, -116, 220, 44, () => this.renderCharacters());
-        this.addButton(panel, 'ĐĂNG XUẤT', 0, -172, 150, 40, () => this.logout());
+        if (!this.onEnterGame) {
+            this.setStatus('Chưa kết nối MapTestScene với luồng vào game.');
+            return;
+        }
+        this.setStatus('Đang tải trạng thái nhân vật và bản đồ từ server...');
+        const connected = await this.onEnterGame(this.api, this.selectedCharacter);
+        if (!connected) {
+            this.setStatus('Không thể vào thế giới online. Hãy kiểm tra HTTPS và trạng thái server.');
+            return;
+        }
+        if (this.contentRoot?.isValid) this.contentRoot.destroy();
+        this.contentRoot = null;
+        this.statusLabel = null;
     }
 
     private logout(): void {
