@@ -256,7 +256,7 @@ export class GameApi {
                 error: 'Chưa cấu hình địa chỉ server.'
             });
         }
-        const localHttp = /^http:\/\/(localhost|127\.0\.0\.1)(:\\d+)?$/i.test(this.baseUrl);
+        const localHttp = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(this.baseUrl);
         if (!/^https:\/\//i.test(this.baseUrl) && !localHttp) {
             return Promise.resolve({
                 ok: false,
