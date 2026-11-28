@@ -197,6 +197,7 @@ func worldSnapshotHandler(db *sql.DB) http.HandlerFunc {
 			Scan(&self.ID,&self.Name,&selfClassID,&self.Level,&self.Exp,&self.MP,&self.X,&self.Y,&self.HP,&self.MaxHP)
 		if err != nil { respond(w,500,map[string]string{"error":"Không đọc được trạng thái nhân vật"}); return }
 		self.ClassName = classNameByID(selfClassID)
+		self.MaxMP = self.MP
 
 		players := []worldCharacterView{}
 		rows, err := tx.Query(`SELECT c.id,c.name,c.class_id,c.level,c.exp,s.mp,c.pos_x,c.pos_y,s.current_hp,s.hp
