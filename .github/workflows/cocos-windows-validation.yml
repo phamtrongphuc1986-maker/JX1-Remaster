@@ -41,7 +41,7 @@ jobs:
           Write-Host "Creator file version: $((Get-Item $creator.FullName).VersionInfo.FileVersion)"
           "COCOS_CREATOR_EXE=$($creator.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Diagnose Creator startup, warm up editor, and build Web Mobile
+      - name: Build Web Mobile with Cocos Creator 3.8.0 and capture diagnostics
         shell: pwsh
         env:
           ELECTRON_ENABLE_LOGGING: '1'
@@ -54,48 +54,31 @@ jobs:
           New-Item -ItemType Directory -Force -Path $diag | Out-Null
           if (-not (Test-Path -LiteralPath $env:COCOS_CREATOR_EXE -PathType Leaf)) { throw "COCOS_CREATOR_EXE does not point to a file: $env:COCOS_CREATOR_EXE" }
 
-          Write-Host '=== Runner session diagnostics ==='
+          Write-Host '=== Runner diagnostics ==='
           Write-Host "Identity: $([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
-          Write-Host "USERPROFILE: $env:USERPROFILE"
-          Write-Host "APPDATA: $env:APPDATA"
-          Write-Host "LOCALAPPDATA: $env:LOCALAPPDATA"
+          Write-Host "Creator: $env:COCOS_CREATOR_EXE"
+          Write-Host "Project: $project"
           Write-Host "SESSIONNAME: $env:SESSIONNAME"
           Write-Host "Explorer process present: $([bool](Get-Process explorer -ErrorAction SilentlyContinue))"
           cmd /c "query session" 2>&1 | Tee-Object -FilePath (Join-Path $diag 'session.txt')
 
+          # The saved Builder profile is committed at profiles/v2/packages/builder.json.
+          # Skip GUI warm-up: it is unrelated to CLI build and previously raised a GUI checkLayout exception.
           $buildArgs = 'platform=web-mobile;debug=true;buildPath=project://build;outputName=jx1m-ci-web-mobile;'
-          $buildArgumentLine = "--project `"$project`" --build `"$buildArgs`" --disable-gpu"
-          Write-Host '=== Exact Creator executable and build command ==='
-          Write-Host "EXE: $env:COCOS_CREATOR_EXE"
-          Write-Host "ARGS: $buildArgumentLine"
-          Write-Host "WORKING DIRECTORY: $project"
-
-          # First-launch warm-up: open the project without building, cap at 25 seconds.
-          $warmOut = Join-Path $diag 'creator-warmup.stdout.log'
-          $warmErr = Join-Path $diag 'creator-warmup.stderr.log'
-          Write-Host '=== Creator warm-up (maximum 25 seconds) ==='
-          $warm = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList @('--project', "`"$project`"", '--disable-gpu') -WorkingDirectory $project -PassThru -RedirectStandardOutput $warmOut -RedirectStandardError $warmErr
-          $warmExited = $warm.WaitForExit(25000)
-          if ($warmExited) {
-            Write-Host "Warm-up process exited with code: $($warm.ExitCode)"
-          } else {
-            Write-Host 'Warm-up editor stayed alive for 25 seconds; terminating warm-up process tree before build.'
-            & taskkill.exe /PID $warm.Id /T /F 2>&1 | Tee-Object -FilePath (Join-Path $diag 'warmup-taskkill.txt')
-          }
-          foreach ($f in @($warmOut, $warmErr)) {
-            if (Test-Path $f) { Write-Host "---- $f ----"; Get-Content $f -Tail 200 }
-          }
-
+          Write-Host '=== Cocos Creator CLI build ==='
+          Write-Host "Project: $project"
+          Write-Host "Build options: $buildArgs"
           if (Test-Path $buildRoot) { Remove-Item -Path $buildRoot -Recurse -Force }
-          $buildOut = Join-Path $diag 'creator-build.stdout.log'
-          $buildErr = Join-Path $diag 'creator-build.stderr.log'
-          Write-Host '=== Creator Web Mobile build ==='
-          $process = Start-Process -FilePath $env:COCOS_CREATOR_EXE -ArgumentList @('--project', "`"$project`"", '--build', "`"$buildArgs`"", '--disable-gpu') -WorkingDirectory $project -Wait -PassThru -RedirectStandardOutput $buildOut -RedirectStandardError $buildErr
-          $code = $process.ExitCode
-          Write-Host "Cocos Creator process exit code: $code"
-          foreach ($f in @($buildOut, $buildErr)) {
-            if (Test-Path $f) { Write-Host "---- $f ----"; Get-Content $f -Tail 300 }
+          $buildOut = Join-Path $diag 'creator-build-combined.log'
+
+          Push-Location $project
+          try {
+            & $env:COCOS_CREATOR_EXE --project $project --build $buildArgs --disable-gpu 2>&1 | Tee-Object -FilePath $buildOut
+            $code = $LASTEXITCODE
+          } finally {
+            Pop-Location
           }
+          Write-Host "Cocos Creator process exit code: $code"
 
           $logRoots = @((Join-Path $env:USERPROFILE '.CocosCreator'), (Join-Path $env:APPDATA 'CocosCreator'), (Join-Path $env:LOCALAPPDATA 'CocosCreator'))
           foreach ($root in $logRoots) {
@@ -125,7 +108,7 @@ jobs:
               Get-Content $_.FullName -Tail 250
             }
           }
-          if ($code -ne 36) { throw "Cocos Creator build failed with exit code $code (expected 36). See cocos-diagnostics artifact." }
+          if ($code -ne 36) { throw "Cocos Creator 3.8.0 build failed with exit code $code (expected 36). See cocos-diagnostics artifact." }
 
           $output = Join-Path $buildRoot 'jx1m-ci-web-mobile'
           if (-not (Test-Path $output)) { throw "Cocos Creator returned success but output folder is missing: $output" }
